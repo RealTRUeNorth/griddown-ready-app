@@ -407,7 +407,7 @@ struct WeatherView: View {
 
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
-            let json = try JSONSerialization.json(with: data) as? [String: Any] ?? [:]
+            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
             parseWeather(json)
             let f = DateFormatter()
             f.dateFormat = "h:mma"

@@ -27,7 +27,6 @@ enum MockData {
             id: "cl1", title: "Bug-Out Bag",
             description: "72-hour emergency go-bag essentials",
             icon: "backpack",
-            lastUpdated: ISO8601DateFormatter().string(from: Date()),
             items: [
                 ChecklistItem(id: "cl1-1", text: "Water — 1 gallon per person per day (3 day supply)", completed: false),
                 ChecklistItem(id: "cl1-2", text: "Water purification tablets or filter", completed: false),
@@ -44,13 +43,13 @@ enum MockData {
                 ChecklistItem(id: "cl1-13", text: "Local and regional maps", completed: false),
                 ChecklistItem(id: "cl1-14", text: "Paracord (50 ft minimum)", completed: false),
                 ChecklistItem(id: "cl1-15", text: "Duct tape (small roll)", completed: false),
-            ]
+            ],
+            lastUpdated: ISO8601DateFormatter().string(from: Date())
         ),
         Checklist(
             id: "cl2", title: "Shelter-In-Place",
             description: "Securing your home for extended grid-down",
             icon: "house",
-            lastUpdated: ISO8601DateFormatter().string(from: Date()),
             items: [
                 ChecklistItem(id: "cl2-1", text: "Secure all entry points", completed: false),
                 ChecklistItem(id: "cl2-2", text: "Fill all bathtubs & containers with water", completed: false),
@@ -64,13 +63,13 @@ enum MockData {
                 ChecklistItem(id: "cl2-10", text: "Secure important documents", completed: false),
                 ChecklistItem(id: "cl2-11", text: "Prepare sanitation supplies", completed: false),
                 ChecklistItem(id: "cl2-12", text: "Check generator fuel / solar chargers", completed: false),
-            ]
+            ],
+            lastUpdated: ISO8601DateFormatter().string(from: Date())
         ),
         Checklist(
             id: "cl3", title: "Comms Plan",
             description: "Communication protocols and check-ins",
             icon: "antenna.radiowaves.left.and.right",
-            lastUpdated: ISO8601DateFormatter().string(from: Date()),
             items: [
                 ChecklistItem(id: "cl3-1", text: "Assign primary radio channel", completed: false),
                 ChecklistItem(id: "cl3-2", text: "Assign backup radio channel", completed: false),
@@ -81,13 +80,13 @@ enum MockData {
                 ChecklistItem(id: "cl3-7", text: "Test all radios and spare batteries", completed: false),
                 ChecklistItem(id: "cl3-8", text: "Print contact list for all members", completed: false),
                 ChecklistItem(id: "cl3-9", text: "Establish signal plan (visual/audible)", completed: false),
-            ]
+            ],
+            lastUpdated: ISO8601DateFormatter().string(from: Date())
         ),
         Checklist(
             id: "cl4", title: "Vehicle Readiness",
             description: "Vehicle prep for emergency evacuation",
             icon: "car.fill",
-            lastUpdated: ISO8601DateFormatter().string(from: Date()),
             items: [
                 ChecklistItem(id: "cl4-1", text: "Fuel tank at least 3/4 full", completed: false),
                 ChecklistItem(id: "cl4-2", text: "Spare fuel containers filled", completed: false),
@@ -97,12 +96,13 @@ enum MockData {
                 ChecklistItem(id: "cl4-6", text: "Jumper cables / jump starter", completed: false),
                 ChecklistItem(id: "cl4-7", text: "Basic tool kit", completed: false),
                 ChecklistItem(id: "cl4-8", text: "Tow strap", completed: false),
-            ]
+            ],
+            lastUpdated: ISO8601DateFormatter().string(from: Date())
         ),
     ]
 
     static let commsChannels: [CommsChannel] = [
-        CommsChannel(id: "ch1", name: "PRIMARY", band: .FRS, frequency: "462.5625 MHz", mode: .simplex, purpose: "Main group communications", ctcssTone: "141.3 Hz", power: "2W", isPrimary: true, notes: "Channel 1 FRS - Default rally channel"),
+        CommsChannel(id: "ch1", name: "PRIMARY", band: .FRS, frequency: "462.5625 MHz", mode: .simplex, purpose: "Main group communications", ctcssTone: "141.3 Hz", power: "2W", notes: "Channel 1 FRS - Default rally channel", isPrimary: true),
         CommsChannel(id: "ch2", name: "SECONDARY", band: .FRS, frequency: "462.5875 MHz", mode: .simplex, purpose: "Backup if primary compromised", ctcssTone: "141.3 Hz", power: "2W", notes: "Channel 2 FRS - Fallback"),
         CommsChannel(id: "ch3", name: "EMERGENCY", band: .FRS, frequency: "462.6750 MHz", mode: .simplex, purpose: "Emergency traffic only", ctcssTone: "167.9 Hz", power: "2W", notes: "Channel 5 FRS - Emergency use only"),
         CommsChannel(id: "ch4", name: "OVERWATCH", band: .GMRS, frequency: "462.5500 MHz", mode: .simplex, purpose: "Long-range scout/recon comms", power: "5W", notes: "GMRS license required"),

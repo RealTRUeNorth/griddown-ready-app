@@ -21,12 +21,18 @@ struct FormTextField: View {
     var multiline: Bool = false
 
     var body: some View {
-        TextField(placeholder, text: $text, axis: multiline ? .vertical : .horizontal)
+        let field = TextField(placeholder, text: $text, axis: multiline ? .vertical : .horizontal)
             .font(.system(size: 15))
             .foregroundStyle(Theme.textPrimary)
             .keyboardType(keyboardType)
-            .lineLimit(multiline ? 3...6 : nil)
-            .padding(14)
+        Group {
+            if multiline {
+                field.lineLimit(3...6)
+            } else {
+                field
+            }
+        }
+        .padding(14)
             .background(Theme.bgCard)
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 1))
             .clipShape(.rect(cornerRadius: 10))

@@ -15,6 +15,8 @@ final class AppStore {
     var kiwixLibrary: [KiwixResource] = []
 
     private let storageKey = "griddown_app_data"
+    private let versionKey = "griddown_data_version"
+    private let currentDataVersion = 2
 
     init() {
         loadData()
@@ -33,6 +35,23 @@ final class AppStore {
         commsChannels = decoded.commsChannels.isEmpty ? MockData.commsChannels : decoded.commsChannels
         commsRepeaters = decoded.commsRepeaters.isEmpty ? MockData.commsRepeaters : decoded.commsRepeaters
         kiwixLibrary = decoded.kiwixLibrary
+
+        // Merge new seed POIs/routes into existing saved data on version bump
+        let savedVersion = UserDefaults.standard.integer(forKey: versionKey)
+        if savedVersion < currentDataVersion {
+            let existingPoiIds = Set(pois.map { $0.id })
+            let missingPois = MockData.allSeedPois.filter { !existingPoiIds.contains($0.id) }
+            if !missingPois.isEmpty {
+                pois.append(contentsOf: missingPois)
+            }
+            let existingRouteIds = Set(routes.map { $0.id })
+            let missingRoutes = MockData.defaultRoutes.filter { !existingRouteIds.contains($0.id) }
+            if !missingRoutes.isEmpty {
+                routes.append(contentsOf: missingRoutes)
+            }
+            UserDefaults.standard.set(currentDataVersion, forKey: versionKey)
+            persist()
+        }
     }
 
     private func persist() {

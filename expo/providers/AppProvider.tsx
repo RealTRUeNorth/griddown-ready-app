@@ -23,6 +23,8 @@ import { kiwixCatalog } from '@/mocks/kiwix';
 import { allSeedPois, defaultRoutes as seedRoutes } from '@/mocks/pois';
 
 const STORAGE_KEY = 'griddown_app_data';
+const DATA_VERSION_KEY = 'griddown_data_version';
+const CURRENT_DATA_VERSION = 2; // Bumped when seed POIs/routes expanded
 
 const defaultAppData: AppData = {
   alertLevel: 'green',
@@ -57,8 +59,28 @@ export const [AppProvider, useAppData] = createContextHook(() => {
         const stored = await AsyncStorage.getItem(STORAGE_KEY);
         if (stored) {
           const parsed = JSON.parse(stored) as AppData;
+          // Merge any missing seed POIs and routes into saved data
+          // This ensures new seed data appears even if the user has existing data
+          const versionStr = await AsyncStorage.getItem(DATA_VERSION_KEY);
+          const savedVersion = versionStr ? parseInt(versionStr, 10) : 0;
+          if (savedVersion < CURRENT_DATA_VERSION) {
+            const existingPoiIds = new Set(parsed.pois.map((p) => p.id));
+            const missingPois = allSeedPois.filter((p) => !existingPoiIds.has(p.id));
+            if (missingPois.length > 0) {
+              parsed.pois = [...parsed.pois, ...missingPois];
+            }
+            const existingRouteIds = new Set(parsed.routes.map((r) => r.id));
+            const missingRoutes = seedRoutes.filter((r) => !existingRouteIds.has(r.id));
+            if (missingRoutes.length > 0) {
+              parsed.routes = [...parsed.routes, ...missingRoutes];
+            }
+            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+            await AsyncStorage.setItem(DATA_VERSION_KEY, String(CURRENT_DATA_VERSION));
+          }
           return parsed;
         }
+        // No saved data — write defaults and version
+        await AsyncStorage.setItem(DATA_VERSION_KEY, String(CURRENT_DATA_VERSION));
       } catch (e) {
         console.log('Error loading app data:', e);
       }

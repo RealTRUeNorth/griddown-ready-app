@@ -161,7 +161,7 @@ struct Guide: Identifiable, Codable, Hashable, Sendable {
 }
 
 enum POICategory: String, Codable, CaseIterable {
-    case water, shelter, medical, supplyCache, rallyPoint, hazard, comms, gasStation, hospital, pharmacy, police, fireStation, other
+    case water, shelter, medical, supplyCache, rallyPoint, hazard, comms, gasStation, hospital, pharmacy, police, fireStation, weatherResource, other
 
     var label: String {
         switch self {
@@ -177,6 +177,7 @@ enum POICategory: String, Codable, CaseIterable {
         case .pharmacy: "Pharmacy"
         case .police: "Police Station"
         case .fireStation: "Fire Station"
+        case .weatherResource: "Weather Resource"
         case .other: "Other"
         }
     }
@@ -195,6 +196,7 @@ enum POICategory: String, Codable, CaseIterable {
         case .pharmacy: Color(hex: 0x43A047)
         case .police: Color(hex: 0x1E88E5)
         case .fireStation: Color(hex: 0xD32F2F)
+        case .weatherResource: Color(hex: 0x00BCD4)
         case .other: Theme.textSecondary
         }
     }
@@ -213,6 +215,7 @@ enum POICategory: String, Codable, CaseIterable {
         case .pharmacy: "pill.fill"
         case .police: "shield.lefthalf.filled"
         case .fireStation: "flame.fill"
+        case .weatherResource: "cloud.rain.fill"
         case .other: "mappin"
         }
     }

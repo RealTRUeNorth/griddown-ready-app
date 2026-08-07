@@ -59,7 +59,7 @@ export interface Guide {
   sections: GuideSection[];
 }
 
-export type POICategory = 'water' | 'shelter' | 'medical' | 'supply_cache' | 'rally_point' | 'hazard' | 'comms' | 'gas_station' | 'hospital' | 'pharmacy' | 'police' | 'fire_station' | 'other';
+export type POICategory = 'water' | 'shelter' | 'medical' | 'supply_cache' | 'rally_point' | 'hazard' | 'comms' | 'gas_station' | 'hospital' | 'pharmacy' | 'police' | 'fire_station' | 'weather_resource' | 'other';
 
 export interface POI {
   id: string;

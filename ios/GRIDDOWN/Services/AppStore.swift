@@ -8,8 +8,8 @@ final class AppStore {
     var members: [GroupMember] = MockData.members
     var supplies: [SupplyItem] = []
     var checklists: [Checklist] = MockData.checklists
-    var pois: [POI] = MockData.infrastructurePois
-    var routes: [Route] = []
+    var pois: [POI] = MockData.allSeedPois
+    var routes: [Route] = MockData.defaultRoutes
     var commsChannels: [CommsChannel] = MockData.commsChannels
     var commsRepeaters: [CommsRepeater] = MockData.commsRepeaters
     var kiwixLibrary: [KiwixResource] = []
@@ -28,8 +28,8 @@ final class AppStore {
         members = decoded.members
         supplies = decoded.supplies
         checklists = decoded.checklists.isEmpty ? MockData.checklists : decoded.checklists
-        pois = decoded.pois.isEmpty ? MockData.infrastructurePois : decoded.pois
-        routes = decoded.routes
+        pois = decoded.pois.isEmpty ? MockData.allSeedPois : decoded.pois
+        routes = decoded.routes.isEmpty ? MockData.defaultRoutes : decoded.routes
         commsChannels = decoded.commsChannels.isEmpty ? MockData.commsChannels : decoded.commsChannels
         commsRepeaters = decoded.commsRepeaters.isEmpty ? MockData.commsRepeaters : decoded.commsRepeaters
         kiwixLibrary = decoded.kiwixLibrary

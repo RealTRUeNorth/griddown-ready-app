@@ -14,6 +14,7 @@ export const POI_CATEGORY_CONFIG: Record<POICategory, { label: string; color: st
   pharmacy: { label: 'Pharmacy', color: '#43A047', icon: 'pill' },
   police: { label: 'Police Station', color: '#1E88E5', icon: 'shield-alert' },
   fire_station: { label: 'Fire Station', color: '#D32F2F', icon: 'flame' },
+  weather_resource: { label: 'Weather Resource', color: '#00BCD4', icon: 'cloud-rain' },
   other: { label: 'Other', color: Colors.textSecondary, icon: 'map-pin' },
 };
 

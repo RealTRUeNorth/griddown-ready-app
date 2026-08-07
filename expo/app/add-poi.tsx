@@ -17,7 +17,7 @@ import { useAppData } from '@/providers/AppProvider';
 import { POI_CATEGORY_CONFIG } from '@/constants/mapHelpers';
 import { POICategory } from '@/types';
 
-const categories: POICategory[] = ['rally_point', 'water', 'shelter', 'medical', 'supply_cache', 'comms', 'gas_station', 'hospital', 'pharmacy', 'police', 'fire_station', 'hazard', 'other'];
+const categories: POICategory[] = ['rally_point', 'water', 'shelter', 'medical', 'supply_cache', 'comms', 'gas_station', 'hospital', 'pharmacy', 'police', 'fire_station', 'weather_resource', 'hazard', 'other'];
 
 export default function AddPoiScreen() {
   const { lat, lng } = useLocalSearchParams<{ lat?: string; lng?: string }>();

@@ -11,6 +11,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { router, Href } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import {
   MapPin,
   Navigation,
@@ -32,7 +33,8 @@ import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
 import { POI_CATEGORY_CONFIG, MEMBER_STATUS_COLORS, DEFAULT_REGION } from '@/constants/mapHelpers';
-import { Coordinates, POI, Route } from '@/types';
+import { Coordinates, POI, Route, WeatherData } from '@/types';
+import WeatherSuggestionsBanner from '@/components/WeatherSuggestionsBanner';
 
 let MapView: any = null;
 let Marker: any = null;
@@ -62,6 +64,7 @@ export default function MapScreen() {
     removeRoute,
     updateMemberLocation,
     alertLevel,
+    addPoi,
   } = useAppData();
 
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
@@ -74,6 +77,35 @@ export default function MapScreen() {
   const [drawerExpanded, setDrawerExpanded] = useState<boolean>(false);
   const mapRef = useRef<any>(null);
   const drawerAnim = useRef(new Animated.Value(0)).current;
+
+  // Fetch weather for resource suggestions (only when location is available)
+  const weatherQuery = useQuery({
+    queryKey: ['mapWeather', userLocation],
+    queryFn: async (): Promise<WeatherData | null> => {
+      if (!userLocation) return null;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${userLocation.latitude}&longitude=${userLocation.longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,surface_pressure,is_day,uv_index,visibility&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Weather fetch failed');
+      const data = await res.json();
+      const c = data.current;
+      return {
+        temperature: c.temperature_2m,
+        feelsLike: c.apparent_temperature,
+        humidity: c.relative_humidity_2m,
+        windSpeed: c.wind_speed_10m,
+        windDirection: c.wind_direction_10m,
+        weatherCode: c.weather_code,
+        precipitation: c.precipitation,
+        pressure: c.surface_pressure,
+        visibility: c.visibility ?? 10,
+        uvIndex: c.uv_index ?? 0,
+        isDay: c.is_day === 1,
+        updatedAt: new Date().toISOString(),
+      };
+    },
+    enabled: !!userLocation,
+    staleTime: 10 * 60 * 1000, // 10 min cache
+  });
 
   useEffect(() => {
     (async () => {
@@ -455,6 +487,16 @@ export default function MapScreen() {
         </View>
       </View>
 
+      {weatherQuery.data && userLocation && (
+        <View style={styles.weatherBanner}>
+          <WeatherSuggestionsBanner
+            weather={weatherQuery.data}
+            userLocation={userLocation}
+            onAddPoi={addPoi}
+          />
+        </View>
+      )}
+
       <View style={styles.fabColumn}>
         <TouchableOpacity
           style={styles.fab}
@@ -654,6 +696,12 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: 11,
     fontWeight: '600' as const,
+  },
+  weatherBanner: {
+    position: 'absolute',
+    top: 52,
+    left: 12,
+    right: 12,
   },
   fabColumn: {
     position: 'absolute',

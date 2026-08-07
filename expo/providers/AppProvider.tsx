@@ -20,7 +20,7 @@ import {
 } from '@/types';
 import { defaultCommsChannels, defaultCommsRepeaters } from '@/mocks/comms';
 import { kiwixCatalog } from '@/mocks/kiwix';
-import { defaultInfrastructurePois } from '@/mocks/pois';
+import { allSeedPois, defaultRoutes as seedRoutes } from '@/mocks/pois';
 
 const STORAGE_KEY = 'griddown_app_data';
 
@@ -30,8 +30,8 @@ const defaultAppData: AppData = {
   members: defaultMembers,
   supplies: [],
   checklists: defaultChecklists,
-  pois: defaultInfrastructurePois,
-  routes: [],
+  pois: allSeedPois,
+  routes: seedRoutes,
   commsChannels: defaultCommsChannels,
   commsRepeaters: defaultCommsRepeaters,
   kiwixLibrary: [],

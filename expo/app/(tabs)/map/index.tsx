@@ -9,6 +9,8 @@ import {
   Animated,
   ScrollView,
   Dimensions,
+  TextInput,
+  FlatList,
 } from 'react-native';
 import { router, Href } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -28,6 +30,7 @@ import {
   Pill,
   ShieldAlert,
   Flame,
+  Search,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -75,6 +78,7 @@ export default function MapScreen() {
   const [selectedPoi, setSelectedPoi] = useState<POI | null>(null);
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const [drawerExpanded, setDrawerExpanded] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const mapRef = useRef<any>(null);
   const drawerAnim = useRef(new Animated.Value(0)).current;
 
@@ -178,6 +182,32 @@ export default function MapScreen() {
   const customPois = useMemo(
     () => pois.filter((p) => !(infrastructureCategories as readonly string[]).includes(p.category)),
     [pois, infrastructureCategories]
+  );
+
+  // Search filtering — matches POI name or category label (case-insensitive)
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase();
+    return pois.filter((p) => {
+      const nameMatch = p.name.toLowerCase().includes(q);
+      const categoryLabel = POI_CATEGORY_CONFIG[p.category]?.label ?? p.category;
+      const categoryMatch = categoryLabel.toLowerCase().includes(q);
+      const notesMatch = p.notes?.toLowerCase().includes(q) ?? false;
+      return nameMatch || categoryMatch || notesMatch;
+    });
+  }, [pois, searchQuery]);
+
+  const isSearching = searchQuery.trim().length > 0;
+
+  // When searching, only show matching POIs on the map
+  const visibleCustomPois = useMemo(
+    () => isSearching ? customPois.filter((p) => searchResults.some((r) => r.id === p.id)) : customPois,
+    [customPois, searchResults, isSearching]
+  );
+
+  const visibleInfrastructurePois = useMemo(
+    () => isSearching ? infrastructurePois.filter((p) => searchResults.some((r) => r.id === p.id)) : infrastructurePois,
+    [infrastructurePois, searchResults, isSearching]
   );
 
   const centerOnUser = useCallback(() => {
@@ -394,7 +424,7 @@ export default function MapScreen() {
             ))}
 
           {showPois &&
-            customPois.map((poi) => {
+            visibleCustomPois.map((poi) => {
               const config = POI_CATEGORY_CONFIG[poi.category];
               return (
                 <Marker
@@ -409,7 +439,7 @@ export default function MapScreen() {
             })}
 
           {showInfrastructure &&
-            infrastructurePois.map((poi) => {
+            visibleInfrastructurePois.map((poi) => {
               const config = POI_CATEGORY_CONFIG[poi.category];
               return (
                 <Marker
@@ -437,7 +467,7 @@ export default function MapScreen() {
             ))}
 
           {showPois &&
-            customPois
+            visibleCustomPois
               .filter((p) => p.category === 'hazard')
               .map((poi) => (
                 <Circle
@@ -487,7 +517,73 @@ export default function MapScreen() {
         </View>
       </View>
 
-      {weatherQuery.data && userLocation && (
+      {/* Search bar */}
+      <View style={styles.searchContainer}>
+        <Search color={Colors.textMuted} size={18} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search POIs by name or category..."
+          placeholderTextColor={Colors.textMuted}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity
+            onPress={() => setSearchQuery('')}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <X color={Colors.textMuted} size={18} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Search results dropdown */}
+      {isSearching && (
+        <View style={styles.searchResults}>
+          {searchResults.length > 0 ? (
+            <FlatList
+              data={searchResults}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => {
+                const config = POI_CATEGORY_CONFIG[item.category];
+                return (
+                  <TouchableOpacity
+                    style={styles.searchResultRow}
+                    onPress={() => {
+                      setSelectedPoi(item);
+                      setSearchQuery('');
+                      if (mapRef.current && Platform.OS !== 'web') {
+                        mapRef.current.animateToRegion({
+                          ...item.coordinates,
+                          latitudeDelta: 0.01,
+                          longitudeDelta: 0.01,
+                        }, 500);
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.searchResultDot, { backgroundColor: config.color }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.searchResultName}>{item.name}</Text>
+                      <Text style={styles.searchResultCategory}>{config.label}</Text>
+                    </View>
+                    <MapPin color={Colors.textMuted} size={14} />
+                  </TouchableOpacity>
+                );
+              }}
+              showsVerticalScrollIndicator={false}
+            />
+          ) : (
+            <View style={styles.searchEmpty}>
+              <Text style={styles.searchEmptyText}>No POIs match "{searchQuery}"</Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {!isSearching && weatherQuery.data && userLocation && (
         <View style={styles.weatherBanner}>
           <WeatherSuggestionsBanner
             weather={weatherQuery.data}
@@ -699,9 +795,74 @@ const styles = StyleSheet.create({
   },
   weatherBanner: {
     position: 'absolute',
+    top: 104,
+    left: 12,
+    right: 12,
+  },
+  searchContainer: {
+    position: 'absolute',
     top: 52,
     left: 12,
     right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(26, 29, 26, 0.95)',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  searchInput: {
+    flex: 1,
+    color: Colors.textPrimary,
+    fontSize: 14,
+    paddingVertical: 0,
+  },
+  searchResults: {
+    position: 'absolute',
+    top: 104,
+    left: 12,
+    right: 12,
+    backgroundColor: 'rgba(26, 29, 26, 0.97)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    maxHeight: 280,
+    overflow: 'hidden',
+  },
+  searchResultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  searchResultDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  searchResultName: {
+    color: Colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '600' as const,
+  },
+  searchResultCategory: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    marginTop: 1,
+  },
+  searchEmpty: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  searchEmptyText: {
+    color: Colors.textMuted,
+    fontSize: 12,
   },
   fabColumn: {
     position: 'absolute',

@@ -22,19 +22,20 @@ struct MapView: View {
     @State private var suggestionsLoading = false
     @State private var showSuggestionsBanner = false
     @State private var addedSuggestionIds: Set<String> = []
+    @State private var searchQuery: String = ""
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             Map(position: $cameraPosition) {
                 if showInfrastructure {
-                    ForEach(store.pois.filter { $0.category.isInfrastructure }) { poi in
+                    ForEach(filteredInfrastructurePois) { poi in
                         Annotation(poi.name, coordinate: CLLocationCoordinate2D(latitude: poi.coordinates.latitude, longitude: poi.coordinates.longitude)) {
                             poiMarker(poi)
                         }
                     }
                 }
                 if showPois {
-                    ForEach(store.pois.filter { !$0.category.isInfrastructure }) { poi in
+                    ForEach(filteredCustomPois) { poi in
                         Annotation(poi.name, coordinate: CLLocationCoordinate2D(latitude: poi.coordinates.latitude, longitude: poi.coordinates.longitude)) {
                             poiMarker(poi)
                         }
@@ -119,9 +120,14 @@ struct MapView: View {
             }
             .padding(20)
 
-            // Weather suggestions banner (top-left)
+            // Search bar + results + weather banner (top area)
             VStack(spacing: 0) {
-                weatherBanner
+                searchBar
+                if !searchQuery.isEmpty {
+                    searchResultsList
+                } else {
+                    weatherBanner
+                }
                 Spacer()
             }
             .padding(.top, 4)
@@ -145,6 +151,118 @@ struct MapView: View {
         .task {
             await fetchWeatherForSuggestions()
         }
+    }
+
+    // MARK: - Search
+
+    private var isSearching: Bool { !searchQuery.isEmpty }
+
+    private var filteredPois: [POI] {
+        guard isSearching else { return store.pois }
+        let q = searchQuery.lowercased()
+        return store.pois.filter { poi in
+            poi.name.lowercased().contains(q) ||
+            poi.category.label.lowercased().contains(q) ||
+            (poi.notes?.lowercased().contains(q) ?? false)
+        }
+    }
+
+    private var filteredInfrastructurePois: [POI] {
+        filteredPois.filter { $0.category.isInfrastructure }
+    }
+
+    private var filteredCustomPois: [POI] {
+        filteredPois.filter { !$0.category.isInfrastructure }
+    }
+
+    @ViewBuilder
+    private var searchBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 16))
+                .foregroundStyle(Theme.textMuted)
+            TextField("Search POIs by name or category...", text: $searchQuery)
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.textPrimary)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+            if !searchQuery.isEmpty {
+                Button {
+                    searchQuery = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Theme.textMuted)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(12)
+        .background(Theme.bgCard)
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 1))
+        .clipShape(.rect(cornerRadius: 10))
+    }
+
+    @ViewBuilder
+    private var searchResultsList: some View {
+        let results = filteredPois
+        VStack(alignment: .leading, spacing: 0) {
+            if results.isEmpty {
+                HStack {
+                    Spacer()
+                    Text("No POIs match \"\(searchQuery)\"")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.textMuted)
+                        .padding(.vertical, 20)
+                    Spacer()
+                }
+            } else {
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 0) {
+                        ForEach(results) { poi in
+                            Button {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                selectedPoi = poi
+                                searchQuery = ""
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    cameraPosition = .region(MKCoordinateRegion(
+                                        center: CLLocationCoordinate2D(latitude: poi.coordinates.latitude, longitude: poi.coordinates.longitude),
+                                        span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                                    ))
+                                }
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Circle()
+                                        .fill(poi.category.color)
+                                        .frame(width: 10, height: 10)
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(poi.name)
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundStyle(Theme.textPrimary)
+                                        Text(poi.category.label)
+                                            .font(.system(size: 11))
+                                            .foregroundStyle(Theme.textMuted)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "mappin")
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(Theme.textMuted)
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 12)
+                            }
+                            .buttonStyle(.plain)
+                            Divider().overlay(Theme.border)
+                        }
+                    }
+                }
+                .frame(maxHeight: 280)
+            }
+        }
+        .background(Theme.bgCard)
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 1))
+        .clipShape(.rect(cornerRadius: 10))
+        .padding(.top, 8)
     }
 
     // MARK: - Weather Suggestions

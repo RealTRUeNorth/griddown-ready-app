@@ -1,0 +1,496 @@
+import React, { useCallback, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Animated,
+  Pressable,
+} from 'react-native';
+import { router, Href } from 'expo-router';
+import {
+  Shield,
+  Users,
+  Package,
+  CheckSquare,
+  BookOpen,
+  AlertTriangle,
+  ChevronRight,
+  Radio,
+  Zap,
+} from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
+import Colors from '@/constants/colors';
+import { useAppData } from '@/providers/AppProvider';
+import { AlertLevel } from '@/types';
+
+const alertConfig: Record<AlertLevel, { label: string; color: string; bgColor: string; description: string }> = {
+  green: {
+    label: 'ALL CLEAR',
+    color: Colors.statusGreen,
+    bgColor: 'rgba(76, 175, 80, 0.15)',
+    description: 'Normal operations. Continue monitoring.',
+  },
+  amber: {
+    label: 'ELEVATED',
+    color: Colors.statusAmber,
+    bgColor: 'rgba(255, 193, 7, 0.15)',
+    description: 'Heightened awareness. Review checklists.',
+  },
+  red: {
+    label: 'RED ALERT',
+    color: Colors.statusRed,
+    bgColor: 'rgba(244, 67, 54, 0.15)',
+    description: 'Execute emergency protocols now.',
+  },
+};
+
+const alertLevels: AlertLevel[] = ['green', 'amber', 'red'];
+
+export default function DashboardScreen() {
+  const {
+    alertLevel,
+    updateAlertLevel,
+    members,
+    supplies,
+    checklists,
+    supplyStats,
+    checklistStats,
+  } = useAppData();
+
+  const currentAlert = alertConfig[alertLevel];
+  const readyMembers = members.filter((m) => m.status === 'ready').length;
+  const totalChecked = checklistStats.reduce((sum, s) => sum + s.completed, 0);
+  const totalItems = checklistStats.reduce((sum, s) => sum + s.total, 0);
+  const overallPercent = totalItems > 0 ? Math.round((totalChecked / totalItems) * 100) : 0;
+
+  const handleAlertChange = useCallback(
+    (level: AlertLevel) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      updateAlertLevel(level);
+    },
+    [updateAlertLevel]
+  );
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={[styles.alertBanner, { backgroundColor: currentAlert.bgColor }]}>
+        <View style={styles.alertHeader}>
+          <AlertTriangle color={currentAlert.color} size={22} />
+          <Text style={[styles.alertLabel, { color: currentAlert.color }]}>
+            {currentAlert.label}
+          </Text>
+        </View>
+        <Text style={styles.alertDescription}>{currentAlert.description}</Text>
+        <View style={styles.alertButtons}>
+          {alertLevels.map((level) => {
+            const config = alertConfig[level];
+            const isActive = alertLevel === level;
+            return (
+              <TouchableOpacity
+                key={level}
+                testID={`alert-${level}`}
+                style={[
+                  styles.alertButton,
+                  {
+                    backgroundColor: isActive ? config.color : Colors.bgCard,
+                    borderColor: isActive ? config.color : Colors.border,
+                  },
+                ]}
+                onPress={() => handleAlertChange(level)}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.alertButtonText,
+                    { color: isActive ? Colors.white : Colors.textSecondary },
+                  ]}
+                >
+                  {level.toUpperCase()}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      <View style={styles.statsRow}>
+        <StatCard
+          icon={<Users color={Colors.oliveLight} size={20} />}
+          label="PERSONNEL"
+          value={`${readyMembers}/${members.length}`}
+          sublabel="Ready"
+          onPress={() => router.push('/(tabs)/intel/group' as Href)}
+        />
+        <StatCard
+          icon={<Package color={Colors.orangeLight} size={20} />}
+          label="SUPPLIES"
+          value={`${supplies.length}`}
+          sublabel={supplyStats.low > 0 ? `${supplyStats.low} low` : 'Stocked'}
+          alert={supplyStats.low > 0}
+          onPress={() => router.push('/(tabs)/prep/supplies' as Href)}
+        />
+      </View>
+
+      <View style={styles.statsRow}>
+        <StatCard
+          icon={<CheckSquare color={Colors.greenLight} size={20} />}
+          label="READINESS"
+          value={`${overallPercent}%`}
+          sublabel={`${totalChecked}/${totalItems} items`}
+          onPress={() => router.push('/(tabs)/prep/checklists' as Href)}
+        />
+        <StatCard
+          icon={<BookOpen color={Colors.amberLight} size={20} />}
+          label="GUIDES"
+          value="6"
+          sublabel="Available"
+          onPress={() => router.push('/(tabs)/intel/guides' as Href)}
+        />
+      </View>
+
+      <Text style={styles.sectionTitle}>QUICK ACCESS</Text>
+      <View style={styles.quickGrid}>
+        <QuickAction
+          icon={<Zap color={Colors.orange} size={22} />}
+          label="Bug-Out Bag"
+          onPress={() => router.push({ pathname: '/checklist-detail', params: { id: 'cl1' } } as unknown as Href)}
+        />
+        <QuickAction
+          icon={<Radio color={Colors.orange} size={22} />}
+          label="Comms Plan"
+          onPress={() => router.push({ pathname: '/checklist-detail', params: { id: 'cl3' } } as unknown as Href)}
+        />
+        <QuickAction
+          icon={<Shield color={Colors.orange} size={22} />}
+          label="Security"
+          onPress={() => router.push({ pathname: '/guide-detail', params: { id: 'g6' } } as unknown as Href)}
+        />
+        <QuickAction
+          icon={<AlertTriangle color={Colors.orange} size={22} />}
+          label="First Aid"
+          onPress={() => router.push({ pathname: '/guide-detail', params: { id: 'g2' } } as unknown as Href)}
+        />
+      </View>
+
+      {checklists.length > 0 && (
+        <>
+          <Text style={styles.sectionTitle}>CHECKLIST STATUS</Text>
+          {checklists.map((cl) => {
+            const stat = checklistStats.find((s) => s.id === cl.id);
+            if (!stat) return null;
+            return (
+              <TouchableOpacity
+                key={cl.id}
+                style={styles.checklistRow}
+                onPress={() => router.push({ pathname: '/checklist-detail', params: { id: cl.id } } as unknown as Href)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.checklistInfo}>
+                  <Text style={styles.checklistName}>{cl.title}</Text>
+                  <Text style={styles.checklistSub}>
+                    {stat.completed}/{stat.total} complete
+                  </Text>
+                </View>
+                <View style={styles.checklistRight}>
+                  <View style={styles.progressBarBg}>
+                    <View
+                      style={[
+                        styles.progressBarFill,
+                        {
+                          width: `${stat.percent}%`,
+                          backgroundColor:
+                            stat.percent === 100
+                              ? Colors.statusGreen
+                              : stat.percent > 50
+                              ? Colors.statusAmber
+                              : Colors.orange,
+                        },
+                      ]}
+                    />
+                  </View>
+                  <ChevronRight color={Colors.textMuted} size={16} />
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </>
+      )}
+
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>ALL DATA STORED LOCALLY</Text>
+        <Text style={styles.footerSubtext}>No internet required</Text>
+      </View>
+    </ScrollView>
+  );
+}
+
+function StatCard({
+  icon,
+  label,
+  value,
+  sublabel,
+  alert,
+  onPress,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  sublabel: string;
+  alert?: boolean;
+  onPress: () => void;
+}) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.96,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 3,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  return (
+    <Pressable onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut} style={styles.statCardWrapper}>
+      <Animated.View style={[styles.statCard, { transform: [{ scale: scaleAnim }] }]}>
+        <View style={styles.statCardHeader}>
+          {icon}
+          <Text style={styles.statLabel}>{label}</Text>
+        </View>
+        <Text style={styles.statValue}>{value}</Text>
+        <Text style={[styles.statSublabel, alert && { color: Colors.statusRed }]}>
+          {sublabel}
+        </Text>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+function QuickAction({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onPress: () => void;
+}) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.93,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 3,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  return (
+    <Pressable onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut} style={styles.quickActionWrapper}>
+      <Animated.View style={[styles.quickAction, { transform: [{ scale: scaleAnim }] }]}>
+        <View style={styles.quickActionIcon}>{icon}</View>
+        <Text style={styles.quickActionLabel}>{label}</Text>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.bg,
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  alertBanner: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  alertHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  alertLabel: {
+    fontSize: 16,
+    fontWeight: '800' as const,
+    letterSpacing: 2,
+  },
+  alertDescription: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    marginBottom: 14,
+    lineHeight: 18,
+  },
+  alertButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  alertButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  alertButtonText: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    letterSpacing: 1,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 10,
+  },
+  statCardWrapper: {
+    flex: 1,
+  },
+  statCard: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  statCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  statLabel: {
+    color: Colors.textMuted,
+    fontSize: 10,
+    fontWeight: '700' as const,
+    letterSpacing: 1.5,
+  },
+  statValue: {
+    color: Colors.textPrimary,
+    fontSize: 28,
+    fontWeight: '800' as const,
+  },
+  statSublabel: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  sectionTitle: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    fontWeight: '700' as const,
+    letterSpacing: 2,
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  quickGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  quickActionWrapper: {
+    width: '48%' as const,
+    flexGrow: 1,
+  },
+  quickAction: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 10,
+  },
+  quickActionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.orangeMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionLabel: {
+    color: Colors.textPrimary,
+    fontSize: 12,
+    fontWeight: '600' as const,
+    textAlign: 'center',
+  },
+  checklistRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.bgCard,
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  checklistInfo: {
+    flex: 1,
+  },
+  checklistName: {
+    color: Colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '600' as const,
+  },
+  checklistSub: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  checklistRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  progressBarBg: {
+    width: 60,
+    height: 6,
+    backgroundColor: Colors.bgElevated,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  footer: {
+    alignItems: 'center',
+    marginTop: 30,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  footerText: {
+    color: Colors.textMuted,
+    fontSize: 10,
+    fontWeight: '700' as const,
+    letterSpacing: 2,
+  },
+  footerSubtext: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    marginTop: 4,
+  },
+});

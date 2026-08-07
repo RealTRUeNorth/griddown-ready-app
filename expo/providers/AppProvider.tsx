@@ -1,0 +1,489 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import createContextHook from '@nkzw/create-context-hook';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { defaultChecklists } from '@/mocks/checklists';
+import { defaultMembers } from '@/mocks/members';
+import {
+  AlertLevel,
+  GroupMember,
+  SupplyItem,
+  Checklist,
+  ChecklistItem,
+  AppData,
+  POI,
+  Route,
+  Coordinates,
+  CommsChannel,
+  CommsRepeater,
+  KiwixResource,
+} from '@/types';
+import { defaultCommsChannels, defaultCommsRepeaters } from '@/mocks/comms';
+import { kiwixCatalog } from '@/mocks/kiwix';
+import { defaultInfrastructurePois } from '@/mocks/pois';
+
+const STORAGE_KEY = 'griddown_app_data';
+
+const defaultAppData: AppData = {
+  alertLevel: 'green',
+  groupName: 'My Group',
+  members: defaultMembers,
+  supplies: [],
+  checklists: defaultChecklists,
+  pois: defaultInfrastructurePois,
+  routes: [],
+  commsChannels: defaultCommsChannels,
+  commsRepeaters: defaultCommsRepeaters,
+  kiwixLibrary: [],
+};
+
+export const [AppProvider, useAppData] = createContextHook(() => {
+  const queryClient = useQueryClient();
+  const [alertLevel, setAlertLevel] = useState<AlertLevel>('green');
+  const [groupName, setGroupName] = useState<string>('My Group');
+  const [members, setMembers] = useState<GroupMember[]>(defaultMembers);
+  const [supplies, setSupplies] = useState<SupplyItem[]>([]);
+  const [checklists, setChecklists] = useState<Checklist[]>(defaultChecklists);
+  const [pois, setPois] = useState<POI[]>([]);
+  const [routes, setRoutes] = useState<Route[]>([]);
+  const [commsChannels, setCommsChannels] = useState<CommsChannel[]>(defaultCommsChannels);
+  const [commsRepeaters, setCommsRepeaters] = useState<CommsRepeater[]>(defaultCommsRepeaters);
+  const [kiwixLibrary, setKiwixLibrary] = useState<KiwixResource[]>([]);
+
+  const dataQuery = useQuery({
+    queryKey: ['appData'],
+    queryFn: async (): Promise<AppData> => {
+      try {
+        const stored = await AsyncStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored) as AppData;
+          return parsed;
+        }
+      } catch (e) {
+        console.log('Error loading app data:', e);
+      }
+      return defaultAppData;
+    },
+  });
+
+  useEffect(() => {
+    if (dataQuery.data) {
+      setAlertLevel(dataQuery.data.alertLevel);
+      setGroupName(dataQuery.data.groupName);
+      setMembers(dataQuery.data.members);
+      setSupplies(dataQuery.data.supplies);
+      setChecklists(dataQuery.data.checklists);
+      setPois(dataQuery.data.pois ?? []);
+      setRoutes(dataQuery.data.routes ?? []);
+      setCommsChannels(dataQuery.data.commsChannels ?? defaultCommsChannels);
+      setCommsRepeaters(dataQuery.data.commsRepeaters ?? defaultCommsRepeaters);
+      setKiwixLibrary(dataQuery.data.kiwixLibrary ?? []);
+    }
+  }, [dataQuery.data]);
+
+  const saveMutation = useMutation({
+    mutationFn: async (data: AppData) => {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appData'] });
+    },
+  });
+
+  const persistData = useCallback(
+    (overrides: Partial<AppData>) => {
+      const data: AppData = {
+        alertLevel,
+        groupName,
+        members,
+        supplies,
+        checklists,
+        pois,
+        routes,
+        commsChannels,
+        commsRepeaters,
+        kiwixLibrary,
+        ...overrides,
+      };
+      saveMutation.mutate(data);
+    },
+    [alertLevel, groupName, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary, saveMutation]
+  );
+
+  const updateAlertLevel = useCallback(
+    (level: AlertLevel) => {
+      setAlertLevel(level);
+      persistData({ alertLevel: level });
+    },
+    [persistData]
+  );
+
+  const updateGroupName = useCallback(
+    (name: string) => {
+      setGroupName(name);
+      persistData({ groupName: name });
+    },
+    [persistData]
+  );
+
+  const addMember = useCallback(
+    (member: GroupMember) => {
+      const updated = [...members, member];
+      setMembers(updated);
+      persistData({ members: updated });
+    },
+    [members, persistData]
+  );
+
+  const updateMember = useCallback(
+    (member: GroupMember) => {
+      const updated = members.map((m) => (m.id === member.id ? member : m));
+      setMembers(updated);
+      persistData({ members: updated });
+    },
+    [members, persistData]
+  );
+
+  const removeMember = useCallback(
+    (id: string) => {
+      const updated = members.filter((m) => m.id !== id);
+      setMembers(updated);
+      persistData({ members: updated });
+    },
+    [members, persistData]
+  );
+
+  const addSupply = useCallback(
+    (item: SupplyItem) => {
+      const updated = [...supplies, item];
+      setSupplies(updated);
+      persistData({ supplies: updated });
+    },
+    [supplies, persistData]
+  );
+
+  const updateSupply = useCallback(
+    (item: SupplyItem) => {
+      const updated = supplies.map((s) => (s.id === item.id ? item : s));
+      setSupplies(updated);
+      persistData({ supplies: updated });
+    },
+    [supplies, persistData]
+  );
+
+  const removeSupply = useCallback(
+    (id: string) => {
+      const updated = supplies.filter((s) => s.id !== id);
+      setSupplies(updated);
+      persistData({ supplies: updated });
+    },
+    [supplies, persistData]
+  );
+
+  const toggleChecklistItem = useCallback(
+    (checklistId: string, itemId: string) => {
+      const updated = checklists.map((cl) => {
+        if (cl.id === checklistId) {
+          return {
+            ...cl,
+            lastUpdated: new Date().toISOString(),
+            items: cl.items.map((item) =>
+              item.id === itemId ? { ...item, completed: !item.completed } : item
+            ),
+          };
+        }
+        return cl;
+      });
+      setChecklists(updated);
+      persistData({ checklists: updated });
+    },
+    [checklists, persistData]
+  );
+
+  const addChecklistItem = useCallback(
+    (checklistId: string, item: ChecklistItem) => {
+      const updated = checklists.map((cl) => {
+        if (cl.id === checklistId) {
+          return {
+            ...cl,
+            lastUpdated: new Date().toISOString(),
+            items: [...cl.items, item],
+          };
+        }
+        return cl;
+      });
+      setChecklists(updated);
+      persistData({ checklists: updated });
+    },
+    [checklists, persistData]
+  );
+
+  const removeChecklistItem = useCallback(
+    (checklistId: string, itemId: string) => {
+      const updated = checklists.map((cl) => {
+        if (cl.id === checklistId) {
+          return {
+            ...cl,
+            lastUpdated: new Date().toISOString(),
+            items: cl.items.filter((item) => item.id !== itemId),
+          };
+        }
+        return cl;
+      });
+      setChecklists(updated);
+      persistData({ checklists: updated });
+    },
+    [checklists, persistData]
+  );
+
+  const updateMemberLocation = useCallback(
+    (memberId: string, location: Coordinates) => {
+      const updated = members.map((m) =>
+        m.id === memberId
+          ? { ...m, location, locationUpdatedAt: new Date().toISOString() }
+          : m
+      );
+      setMembers(updated);
+      persistData({ members: updated });
+    },
+    [members, persistData]
+  );
+
+  const addPoi = useCallback(
+    (poi: POI) => {
+      const updated = [...pois, poi];
+      setPois(updated);
+      persistData({ pois: updated });
+    },
+    [pois, persistData]
+  );
+
+  const updatePoi = useCallback(
+    (poi: POI) => {
+      const updated = pois.map((p) => (p.id === poi.id ? poi : p));
+      setPois(updated);
+      persistData({ pois: updated });
+    },
+    [pois, persistData]
+  );
+
+  const removePoi = useCallback(
+    (id: string) => {
+      const updated = pois.filter((p) => p.id !== id);
+      setPois(updated);
+      persistData({ pois: updated });
+    },
+    [pois, persistData]
+  );
+
+  const addRoute = useCallback(
+    (route: Route) => {
+      const updated = [...routes, route];
+      setRoutes(updated);
+      persistData({ routes: updated });
+    },
+    [routes, persistData]
+  );
+
+  const updateRoute = useCallback(
+    (route: Route) => {
+      const updated = routes.map((r) => (r.id === route.id ? route : r));
+      setRoutes(updated);
+      persistData({ routes: updated });
+    },
+    [routes, persistData]
+  );
+
+  const removeRoute = useCallback(
+    (id: string) => {
+      const updated = routes.filter((r) => r.id !== id);
+      setRoutes(updated);
+      persistData({ routes: updated });
+    },
+    [routes, persistData]
+  );
+
+  const addCommsChannel = useCallback(
+    (channel: CommsChannel) => {
+      const updated = [...commsChannels, channel];
+      setCommsChannels(updated);
+      persistData({ commsChannels: updated });
+    },
+    [commsChannels, persistData]
+  );
+
+  const updateCommsChannel = useCallback(
+    (channel: CommsChannel) => {
+      const updated = commsChannels.map((c) => (c.id === channel.id ? channel : c));
+      setCommsChannels(updated);
+      persistData({ commsChannels: updated });
+    },
+    [commsChannels, persistData]
+  );
+
+  const removeCommsChannel = useCallback(
+    (id: string) => {
+      const updated = commsChannels.filter((c) => c.id !== id);
+      setCommsChannels(updated);
+      persistData({ commsChannels: updated });
+    },
+    [commsChannels, persistData]
+  );
+
+  const addCommsRepeater = useCallback(
+    (repeater: CommsRepeater) => {
+      const updated = [...commsRepeaters, repeater];
+      setCommsRepeaters(updated);
+      persistData({ commsRepeaters: updated });
+    },
+    [commsRepeaters, persistData]
+  );
+
+  const updateCommsRepeater = useCallback(
+    (repeater: CommsRepeater) => {
+      const updated = commsRepeaters.map((r) => (r.id === repeater.id ? repeater : r));
+      setCommsRepeaters(updated);
+      persistData({ commsRepeaters: updated });
+    },
+    [commsRepeaters, persistData]
+  );
+
+  const removeCommsRepeater = useCallback(
+    (id: string) => {
+      const updated = commsRepeaters.filter((r) => r.id !== id);
+      setCommsRepeaters(updated);
+      persistData({ commsRepeaters: updated });
+    },
+    [commsRepeaters, persistData]
+  );
+
+  const addChecklist = useCallback(
+    (checklist: Checklist) => {
+      const updated = [...checklists, checklist];
+      setChecklists(updated);
+      persistData({ checklists: updated });
+    },
+    [checklists, persistData]
+  );
+
+  const saveKiwixResource = useCallback(
+    (resource: KiwixResource) => {
+      const exists = kiwixLibrary.find((r) => r.id === resource.id);
+      if (exists) return;
+      const saved: KiwixResource = { ...resource, status: 'saved', savedAt: new Date().toISOString() };
+      const updated = [...kiwixLibrary, saved];
+      setKiwixLibrary(updated);
+      persistData({ kiwixLibrary: updated });
+    },
+    [kiwixLibrary, persistData]
+  );
+
+  const updateKiwixResource = useCallback(
+    (resource: KiwixResource) => {
+      const updated = kiwixLibrary.map((r) => (r.id === resource.id ? resource : r));
+      setKiwixLibrary(updated);
+      persistData({ kiwixLibrary: updated });
+    },
+    [kiwixLibrary, persistData]
+  );
+
+  const removeKiwixResource = useCallback(
+    (id: string) => {
+      const updated = kiwixLibrary.filter((r) => r.id !== id);
+      setKiwixLibrary(updated);
+      persistData({ kiwixLibrary: updated });
+    },
+    [kiwixLibrary, persistData]
+  );
+
+  const importKiwixLibrary = useCallback(
+    (resources: KiwixResource[]) => {
+      const merged = [...kiwixLibrary];
+      for (const res of resources) {
+        if (!merged.find((r) => r.id === res.id)) {
+          merged.push({ ...res, savedAt: new Date().toISOString() });
+        }
+      }
+      setKiwixLibrary(merged);
+      persistData({ kiwixLibrary: merged });
+    },
+    [kiwixLibrary, persistData]
+  );
+
+  const exportKiwixLibrary = useCallback(() => {
+    return JSON.stringify(kiwixLibrary, null, 2);
+  }, [kiwixLibrary]);
+
+  const removeChecklist = useCallback(
+    (id: string) => {
+      const updated = checklists.filter((cl) => cl.id !== id);
+      setChecklists(updated);
+      persistData({ checklists: updated });
+    },
+    [checklists, persistData]
+  );
+
+  const supplyStats = useMemo(() => {
+    const total = supplies.length;
+    const low = supplies.filter((s) => s.quantity <= s.minimumQuantity).length;
+    const categories = [...new Set(supplies.map((s) => s.category))].length;
+    return { total, low, categories };
+  }, [supplies]);
+
+  const checklistStats = useMemo(() => {
+    return checklists.map((cl) => {
+      const total = cl.items.length;
+      const completed = cl.items.filter((i) => i.completed).length;
+      const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+      return { id: cl.id, total, completed, percent };
+    });
+  }, [checklists]);
+
+  return {
+    alertLevel,
+    groupName,
+    members,
+    supplies,
+    checklists,
+    pois,
+    routes,
+    isLoading: dataQuery.isLoading,
+    updateAlertLevel,
+    updateGroupName,
+    addMember,
+    updateMember,
+    removeMember,
+    updateMemberLocation,
+    addSupply,
+    updateSupply,
+    removeSupply,
+    toggleChecklistItem,
+    addChecklistItem,
+    removeChecklistItem,
+    addChecklist,
+    removeChecklist,
+    addPoi,
+    updatePoi,
+    removePoi,
+    addRoute,
+    updateRoute,
+    removeRoute,
+    commsChannels,
+    commsRepeaters,
+    addCommsChannel,
+    updateCommsChannel,
+    removeCommsChannel,
+    addCommsRepeater,
+    updateCommsRepeater,
+    removeCommsRepeater,
+    supplyStats,
+    checklistStats,
+    kiwixLibrary,
+    saveKiwixResource,
+    updateKiwixResource,
+    removeKiwixResource,
+    importKiwixLibrary,
+    exportKiwixLibrary,
+  };
+});

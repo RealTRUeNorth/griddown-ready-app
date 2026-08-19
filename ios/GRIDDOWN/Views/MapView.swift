@@ -12,6 +12,8 @@ struct MapView: View {
     @State private var showRoutes = true
     @State private var showInfrastructure = true
     @State private var selectedPoi: POI?
+    @State private var editingPoi: POI?
+    @State private var pendingDeletePoi: POI?
     @State private var showLayers = false
     @State private var showingAddPoi = false
     @State private var showingAddRoute = false
@@ -147,6 +149,27 @@ struct MapView: View {
         }
         .sheet(isPresented: $showingAddRoute) {
             AddRouteView()
+        }
+        .sheet(item: $editingPoi) { poi in
+            AddPoiView(existing: poi)
+        }
+        .confirmationDialog(
+            "Remove \"\(pendingDeletePoi?.name ?? "POI")\" from the map?",
+            isPresented: Binding(
+                get: { pendingDeletePoi != nil },
+                set: { if !$0 { pendingDeletePoi = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Remove", role: .destructive) {
+                if let poi = pendingDeletePoi {
+                    withAnimation { selectedPoi = nil }
+                    store.removePoi(poi.id)
+                    UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                }
+                pendingDeletePoi = nil
+            }
+            Button("Cancel", role: .cancel) { pendingDeletePoi = nil }
         }
         .task {
             await fetchWeatherForSuggestions()
@@ -555,11 +578,34 @@ struct MapView: View {
                 }
                 Spacer()
                 Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    withAnimation { selectedPoi = nil }
+                    editingPoi = poi
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Theme.orangeLight)
+                        .frame(width: 30, height: 30)
+                        .background(Theme.bgElevated)
+                        .clipShape(Circle())
+                }
+                Button {
+                    pendingDeletePoi = poi
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Theme.statusRed)
+                        .frame(width: 30, height: 30)
+                        .background(Theme.bgElevated)
+                        .clipShape(Circle())
+                }
+                Button {
                     withAnimation { selectedPoi = nil }
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(Theme.textMuted)
+                        .frame(width: 30, height: 30)
                 }
             }
             if let notes = poi.notes, !notes.isEmpty {

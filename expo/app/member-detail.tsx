@@ -8,7 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
-import { User, Phone, FileText, Trash2, Shield } from 'lucide-react-native';
+import { User, Phone, FileText, Trash2, Shield, Pencil } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
@@ -121,6 +121,18 @@ export default function MemberDetailScreen() {
             </View>
           </View>
         )}
+
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push({ pathname: '/add-member', params: { id: member.id } } as never);
+          }}
+          activeOpacity={0.7}
+        >
+          <Pencil color={Colors.orange} size={18} />
+          <Text style={styles.editText}>Edit Member</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.deleteButton}
@@ -246,13 +258,30 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 20,
   },
-  deleteButton: {
+  editButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 14,
     marginTop: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.bgCard,
+  },
+  editText: {
+    color: Colors.orange,
+    fontSize: 14,
+    fontWeight: '600' as const,
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    marginTop: 10,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: Colors.redMuted,

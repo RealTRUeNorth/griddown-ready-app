@@ -144,8 +144,17 @@ struct GuideDetailView: View {
 
 struct MemberDetailView: View {
     let member: GroupMember
+    @Environment(AppStore.self) var store
+    @Environment(\.dismiss) var dismiss
+    @State private var showingEdit = false
+    @State private var showingRemoveConfirm = false
+
+    private var liveMember: GroupMember {
+        store.members.first(where: { $0.id == member.id }) ?? member
+    }
 
     var body: some View {
+        let member = liveMember
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(spacing: 12) {
@@ -219,6 +228,25 @@ struct MemberDetailView: View {
                         .clipShape(.rect(cornerRadius: 12))
                     }
                 }
+
+                Button {
+                    showingRemoveConfirm = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("Remove from Group")
+                            .font(.system(size: 14, weight: .semibold))
+                    }
+                    .foregroundStyle(Theme.statusRed)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Theme.statusRed.opacity(0.12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.statusRed.opacity(0.4), lineWidth: 1))
+                    .clipShape(.rect(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 8)
             }
             .padding(16)
             .padding(.bottom, 40)
@@ -226,6 +254,32 @@ struct MemberDetailView: View {
         .background(Theme.bg.ignoresSafeArea())
         .navigationTitle(member.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    showingEdit = true
+                } label: {
+                    Image(systemName: "pencil")
+                        .foregroundStyle(Theme.orange)
+                }
+            }
+        }
+        .sheet(isPresented: $showingEdit) {
+            AddMemberView(existing: liveMember)
+        }
+        .confirmationDialog(
+            "Remove \(member.name) from the group?",
+            isPresented: $showingRemoveConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Remove", role: .destructive) {
+                store.removeMember(member.id)
+                UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) {}
+        }
     }
 }
 

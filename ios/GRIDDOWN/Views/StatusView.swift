@@ -2,6 +2,7 @@ import SwiftUI
 
 struct StatusView: View {
     @Environment(AppStore.self) var store
+    @State private var editingSupply: SupplyItem?
 
     var body: some View {
         ScrollView {
@@ -9,6 +10,7 @@ struct StatusView: View {
                 alertBanner
                 statsRow1
                 statsRow2
+                inventoryAlertsSection
                 quickAccessSection
                 checklistStatusSection
                 footer
@@ -19,6 +21,89 @@ struct StatusView: View {
         .background(Theme.bg.ignoresSafeArea())
         .navigationTitle("GRIDDOWN")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $editingSupply) { item in
+            AddSupplyView(existing: item)
+        }
+    }
+
+    private struct InventoryBadge: Identifiable {
+        let label: String
+        let color: Color
+        var id: String { label }
+    }
+
+    private struct InventoryAlertEntry: Identifiable {
+        let item: SupplyItem
+        var badges: [InventoryBadge]
+        var id: String { item.id }
+    }
+
+    private var inventoryAlertEntries: [InventoryAlertEntry] {
+        let summary = SupplyAlerts.inventoryAlerts(for: store.supplies)
+        var order: [String] = []
+        var map: [String: InventoryAlertEntry] = [:]
+        func push(_ item: SupplyItem, _ label: String, _ color: Color) {
+            if map[item.id] == nil {
+                map[item.id] = InventoryAlertEntry(item: item, badges: [])
+                order.append(item.id)
+            }
+            map[item.id]?.badges.append(InventoryBadge(label: label, color: color))
+        }
+        summary.expired.forEach { push($0, "EXPIRED", Theme.statusRed) }
+        summary.low.forEach { push($0, "LOW STOCK", Theme.statusRed) }
+        summary.expiringSoon.forEach { push($0, "EXPIRES SOON", Theme.statusAmber) }
+        return order.compactMap { map[$0] }
+    }
+
+    @ViewBuilder
+    private var inventoryAlertsSection: some View {
+        let entries = inventoryAlertEntries
+        if !entries.isEmpty {
+            VStack(alignment: .leading, spacing: 0) {
+                SectionLabel(text: "INVENTORY ALERTS")
+                ForEach(entries) { entry in
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        editingSupply = entry.item
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 15))
+                                .foregroundStyle(entry.badges.first?.color ?? Theme.statusAmber)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(entry.item.name)
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(Theme.textPrimary)
+                                    .lineLimit(1)
+                                Text("\(entry.item.quantity) \(entry.item.unit)\(entry.item.expirationDate.map { " · Exp \($0)" } ?? "")")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(Theme.textMuted)
+                                    .lineLimit(1)
+                            }
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: 4) {
+                                ForEach(entry.badges) { badge in
+                                    Text(badge.label)
+                                        .font(.system(size: 8, weight: .heavy))
+                                        .tracking(0.8)
+                                        .foregroundStyle(badge.color)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(badge.color.opacity(0.15))
+                                        .clipShape(.rect(cornerRadius: 4))
+                                }
+                            }
+                        }
+                        .padding(12)
+                        .background(Theme.bgCard)
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 1))
+                        .clipShape(.rect(cornerRadius: 10))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.bottom, 8)
+                }
+            }
+        }
     }
 
     private var alertBanner: some View {

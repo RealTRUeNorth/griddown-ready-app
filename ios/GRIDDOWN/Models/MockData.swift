@@ -22,6 +22,29 @@ enum MockData {
         ),
     ]
 
+    static let seedSupplies: [SupplyItem] = [
+        SupplyItem(
+            id: "s_water_1", name: "Bottled Water", category: .water,
+            quantity: 18, unit: "gal", minimumQuantity: 24,
+            notes: "Garage rack — 6-pack cases"
+        ),
+        SupplyItem(
+            id: "s_food_1", name: "MRE Cases", category: .food,
+            quantity: 4, unit: "cases", minimumQuantity: 2,
+            expirationDate: "2026-09-15", notes: "Hall closet, top shelf"
+        ),
+        SupplyItem(
+            id: "s_med_1", name: "Ibuprofen", category: .medical,
+            quantity: 1, unit: "bottles", minimumQuantity: 2,
+            expirationDate: "2026-03-01", notes: "Med kit — expired, replace"
+        ),
+        SupplyItem(
+            id: "s_food_2", name: "White Rice", category: .food,
+            quantity: 25, unit: "lbs", minimumQuantity: 10,
+            expirationDate: "2028-01", notes: "Food-grade buckets with gamma lids"
+        ),
+    ]
+
     static let checklists: [Checklist] = [
         Checklist(
             id: "cl1", title: "Bug-Out Bag",

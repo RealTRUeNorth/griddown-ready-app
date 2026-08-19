@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   Pressable,
   Animated,
+  Alert,
 } from 'react-native';
 import { router, Href } from 'expo-router';
 import {
@@ -14,11 +15,15 @@ import {
   BookOpen,
   ChevronRight,
   Heart,
+  Upload,
+  Download,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import * as Clipboard from 'expo-clipboard';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
 import { defaultGuides } from '@/mocks/guides';
+import { parseOpsBackup, backupCounts } from '@/utils/opsBackup';
 
 function NavCard({
   icon,
@@ -79,9 +84,64 @@ function NavCard({
 }
 
 export default function IntelHubScreen() {
-  const { members, kiwixLibrary } = useAppData();
+  const { members, kiwixLibrary, exportOpsBackup, importOpsBackup, currentSnapshot } = useAppData();
 
   const readyMembers = members.filter((m) => m.status === 'ready').length;
+
+  const handleExportBackup = useCallback(async () => {
+    try {
+      const json = exportOpsBackup();
+      await Clipboard.setStringAsync(json);
+      const counts = backupCounts(currentSnapshot());
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(
+        'Ops Backup Copied',
+        `Full ops kit copied to clipboard:\n\n${counts.members} members · ${counts.supplies} supplies · ${counts.pois} POIs · ${counts.routes} routes · ${counts.channels} channels · ${counts.repeaters} repeaters\n\nPaste it into a note, message, or another device to store it.`
+      );
+    } catch (e) {
+      console.log('Export backup failed:', e);
+      Alert.alert('Export Failed', 'Could not copy the backup to clipboard.');
+    }
+  }, [exportOpsBackup, currentSnapshot]);
+
+  const handleImportBackup = useCallback(async () => {
+    try {
+      const raw = await Clipboard.getStringAsync();
+      if (!raw || !raw.trim()) {
+        Alert.alert('Nothing to Import', 'Copy a GRIDDOWN ops backup to your clipboard first.');
+        return;
+      }
+      const parsed = parseOpsBackup(raw);
+      if (!parsed) {
+        Alert.alert('Invalid Backup', 'Clipboard contents are not a valid GRIDDOWN ops backup.');
+        return;
+      }
+      const counts = backupCounts(parsed);
+      Alert.alert(
+        'Replace All Data?',
+        `This will overwrite everything with the backup:\n\n${counts.members} members · ${counts.supplies} supplies · ${counts.pois} POIs · ${counts.routes} routes · ${counts.channels} channels · ${counts.repeaters} repeaters`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Import',
+            style: 'destructive',
+            onPress: () => {
+              const ok = importOpsBackup(raw);
+              if (ok) {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Alert.alert('Import Complete', 'Ops kit restored from backup.');
+              } else {
+                Alert.alert('Import Failed', 'Could not restore from this backup.');
+              }
+            },
+          },
+        ]
+      );
+    } catch (e) {
+      console.log('Import backup failed:', e);
+      Alert.alert('Import Failed', 'Could not read the clipboard.');
+    }
+  }, [importOpsBackup]);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -151,6 +211,24 @@ export default function IntelHubScreen() {
         badgeColor={Colors.olive}
         onPress={() => router.push('/intel/guides' as Href)}
       />
+
+      <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>DATA & BACKUP</Text>
+
+      <NavCard
+        icon={<Upload color={Colors.greenLight} size={24} />}
+        iconBg="rgba(76, 175, 80, 0.15)"
+        title="Export Ops Backup"
+        description="Copy your full ops kit as JSON to the clipboard"
+        onPress={handleExportBackup}
+      />
+
+      <NavCard
+        icon={<Download color={Colors.amberLight} size={24} />}
+        iconBg="rgba(232, 192, 74, 0.15)"
+        title="Import Ops Backup"
+        description="Restore an ops kit from clipboard JSON"
+        onPress={handleImportBackup}
+      />
     </ScrollView>
   );
 }
@@ -170,6 +248,9 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     letterSpacing: 2,
     marginBottom: 14,
+  },
+  sectionLabelSpaced: {
+    marginTop: 12,
   },
   card: {
     flexDirection: 'row',

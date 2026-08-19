@@ -6,7 +6,7 @@ final class AppStore {
     var alertLevel: AlertLevel = .green
     var groupName: String = "My Group"
     var members: [GroupMember] = MockData.members
-    var supplies: [SupplyItem] = []
+    var supplies: [SupplyItem] = MockData.seedSupplies
     var checklists: [Checklist] = MockData.checklists
     var pois: [POI] = MockData.allSeedPois
     var routes: [Route] = MockData.defaultRoutes
@@ -16,7 +16,7 @@ final class AppStore {
 
     private let storageKey = "griddown_app_data"
     private let versionKey = "griddown_data_version"
-    private let currentDataVersion = 2
+    private let currentDataVersion = 3
 
     init() {
         loadData()
@@ -48,6 +48,10 @@ final class AppStore {
             let missingRoutes = MockData.defaultRoutes.filter { !existingRouteIds.contains($0.id) }
             if !missingRoutes.isEmpty {
                 routes.append(contentsOf: missingRoutes)
+            }
+            // v3: seed starter supplies for users who never added any
+            if supplies.isEmpty {
+                supplies = MockData.seedSupplies
             }
             UserDefaults.standard.set(currentDataVersion, forKey: versionKey)
             persist()
@@ -117,15 +121,27 @@ final class AppStore {
     }
 
     func addPoi(_ poi: POI) { pois.append(poi); persist() }
+    func updatePoi(_ poi: POI) {
+        if let idx = pois.firstIndex(where: { $0.id == poi.id }) { pois[idx] = poi; persist() }
+    }
     func removePoi(_ id: String) { pois.removeAll { $0.id == id }; persist() }
 
     func addRoute(_ route: Route) { routes.append(route); persist() }
+    func updateRoute(_ route: Route) {
+        if let idx = routes.firstIndex(where: { $0.id == route.id }) { routes[idx] = route; persist() }
+    }
     func removeRoute(_ id: String) { routes.removeAll { $0.id == id }; persist() }
 
     func addCommsChannel(_ channel: CommsChannel) { commsChannels.append(channel); persist() }
+    func updateCommsChannel(_ channel: CommsChannel) {
+        if let idx = commsChannels.firstIndex(where: { $0.id == channel.id }) { commsChannels[idx] = channel; persist() }
+    }
     func removeCommsChannel(_ id: String) { commsChannels.removeAll { $0.id == id }; persist() }
 
     func addCommsRepeater(_ repeater: CommsRepeater) { commsRepeaters.append(repeater); persist() }
+    func updateCommsRepeater(_ repeater: CommsRepeater) {
+        if let idx = commsRepeaters.firstIndex(where: { $0.id == repeater.id }) { commsRepeaters[idx] = repeater; persist() }
+    }
     func removeCommsRepeater(_ id: String) { commsRepeaters.removeAll { $0.id == id }; persist() }
 
     func saveKiwixResource(_ resource: KiwixResource) {
@@ -137,4 +153,77 @@ final class AppStore {
         persist()
     }
     func removeKiwixResource(_ id: String) { kiwixLibrary.removeAll { $0.id == id }; persist() }
+
+    // MARK: - Ops Backup
+
+    static let opsBackupFormat = "griddown-ops-backup"
+    static let opsBackupVersion = 1
+
+    var opsCountsSummary: String {
+        "\(members.count) members · \(supplies.count) supplies · \(pois.count) POIs · \(routes.count) routes · \(commsChannels.count) channels · \(commsRepeaters.count) repeaters"
+    }
+
+    /// Serializes the entire ops kit as a pretty-printed JSON string.
+    func exportOpsBackup() -> String? {
+        let file = OpsBackupExportFile(
+            format: Self.opsBackupFormat,
+            version: Self.opsBackupVersion,
+            exportedAt: ISO8601DateFormatter().string(from: Date()),
+            data: AppData(
+                alertLevel: alertLevel, groupName: groupName, members: members,
+                supplies: supplies, checklists: checklists, pois: pois, routes: routes,
+                commsChannels: commsChannels, commsRepeaters: commsRepeaters,
+                kiwixLibrary: kiwixLibrary
+            )
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        guard let encoded = try? encoder.encode(file) else { return nil }
+        return String(data: encoded, encoding: .utf8)
+    }
+
+    /// Returns a human-readable counts summary if the string parses as a valid backup.
+    func opsBackupSummary(_ raw: String) -> String? {
+        guard let payload = parseOpsBackup(raw) else { return nil }
+        let m = payload.members?.count ?? 0
+        let s = payload.supplies?.count ?? 0
+        let p = payload.pois?.count ?? 0
+        let r = payload.routes?.count ?? 0
+        let c = payload.commsChannels?.count ?? 0
+        let rp = payload.commsRepeaters?.count ?? 0
+        return "\(m) members · \(s) supplies · \(p) POIs · \(r) routes · \(c) channels · \(rp) repeaters"
+    }
+
+    /// Replaces all app data with the parsed backup. Returns false if invalid.
+    func importOpsBackup(_ raw: String) -> Bool {
+        guard let payload = parseOpsBackup(raw) else { return false }
+        alertLevel = payload.alertLevel ?? .green
+        let trimmedName = payload.groupName?.trimmingCharacters(in: .whitespaces) ?? ""
+        groupName = trimmedName.isEmpty ? "My Group" : trimmedName
+        members = payload.members ?? []
+        supplies = payload.supplies ?? []
+        checklists = payload.checklists ?? []
+        pois = payload.pois ?? []
+        routes = payload.routes ?? []
+        commsChannels = payload.commsChannels ?? []
+        commsRepeaters = payload.commsRepeaters ?? []
+        kiwixLibrary = payload.kiwixLibrary ?? []
+        persist()
+        return true
+    }
+
+    /// Accepts either a wrapped ops-backup file or raw app data JSON.
+    private func parseOpsBackup(_ raw: String) -> OpsBackupData? {
+        guard let jsonData = raw.data(using: .utf8) else { return nil }
+        let decoder = JSONDecoder()
+        if let wrapped = try? decoder.decode(OpsBackupWrapper.self, from: jsonData),
+           wrapped.format == Self.opsBackupFormat,
+           let inner = wrapped.data {
+            return inner
+        }
+        if let direct = try? decoder.decode(OpsBackupData.self, from: jsonData), direct.hasContent {
+            return direct
+        }
+        return nil
+    }
 }

@@ -454,3 +454,40 @@ struct AppData: Codable, Sendable {
     var commsRepeaters: [CommsRepeater] = []
     var kiwixLibrary: [KiwixResource] = []
 }
+
+/// Wrapper written when exporting an ops backup (matches the Expo app's format).
+struct OpsBackupExportFile: Codable, Sendable {
+    var format: String
+    var version: Int
+    var exportedAt: String
+    var data: AppData
+}
+
+/// Lenient wrapper used when importing: every field optional so partial
+/// or hand-edited backups still parse.
+struct OpsBackupWrapper: Codable, Sendable {
+    var format: String?
+    var version: Int?
+    var exportedAt: String?
+    var data: OpsBackupData?
+}
+
+/// Lenient payload used when importing either a wrapped backup or raw app data.
+struct OpsBackupData: Codable, Sendable {
+    var alertLevel: AlertLevel?
+    var groupName: String?
+    var members: [GroupMember]?
+    var supplies: [SupplyItem]?
+    var checklists: [Checklist]?
+    var pois: [POI]?
+    var routes: [Route]?
+    var commsChannels: [CommsChannel]?
+    var commsRepeaters: [CommsRepeater]?
+    var kiwixLibrary: [KiwixResource]?
+
+    var hasContent: Bool {
+        alertLevel != nil || members != nil || supplies != nil || checklists != nil ||
+        pois != nil || routes != nil || commsChannels != nil || commsRepeaters != nil ||
+        kiwixLibrary != nil
+    }
+}

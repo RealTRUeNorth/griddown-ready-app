@@ -178,6 +178,9 @@ export default function CommsScreen() {
               key={channel.id}
               channel={channel}
               onDelete={() => handleDeleteChannel(channel)}
+              onEdit={() =>
+                router.push({ pathname: '/add-channel', params: { id: channel.id } } as unknown as Href)
+              }
             />
           ))}
 
@@ -214,6 +217,9 @@ export default function CommsScreen() {
               key={repeater.id}
               repeater={repeater}
               onDelete={() => handleDeleteRepeater(repeater)}
+              onEdit={() =>
+                router.push({ pathname: '/add-repeater', params: { id: repeater.id } } as unknown as Href)
+              }
             />
           ))}
 
@@ -417,9 +423,11 @@ export default function CommsScreen() {
 function ChannelCard({
   channel,
   onDelete,
+  onEdit,
 }: {
   channel: CommsChannel;
   onDelete: () => void;
+  onEdit: () => void;
 }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const bandInfo = BAND_INFO[channel.band];
@@ -427,6 +435,7 @@ function ChannelCard({
 
   return (
     <Pressable
+      onPress={onEdit}
       onPressIn={() => {
         Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true }).start();
       }}
@@ -490,12 +499,14 @@ function ChannelCard({
 function RepeaterCard({
   repeater,
   onDelete,
+  onEdit,
 }: {
   repeater: CommsRepeater;
   onDelete: () => void;
+  onEdit: () => void;
 }) {
   return (
-    <View style={styles.repeaterCard}>
+    <TouchableOpacity style={styles.repeaterCard} onPress={onEdit} activeOpacity={0.8}>
       <View style={styles.repeaterHeader}>
         <Antenna color={Colors.orangeLight} size={18} />
         <View style={{ flex: 1 }}>
@@ -540,7 +551,7 @@ function RepeaterCard({
       {repeater.notes && (
         <Text style={styles.channelNotes}>{repeater.notes}</Text>
       )}
-    </View>
+    </TouchableOpacity>
   );
 }
 

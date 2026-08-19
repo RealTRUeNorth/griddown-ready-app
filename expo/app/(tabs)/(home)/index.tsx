@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -23,7 +23,8 @@ import {
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
-import { AlertLevel } from '@/types';
+import { AlertLevel, SupplyItem } from '@/types';
+import { getInventoryAlerts } from '@/utils/supplyAlerts';
 
 const alertConfig: Record<AlertLevel, { label: string; color: string; bgColor: string; description: string }> = {
   green: {
@@ -61,6 +62,20 @@ export default function DashboardScreen() {
 
   const currentAlert = alertConfig[alertLevel];
   const readyMembers = members.filter((m) => m.status === 'ready').length;
+
+  const inventoryAlertRows = useMemo(() => {
+    const summary = getInventoryAlerts(supplies);
+    const map = new Map<string, { item: SupplyItem; reasons: { label: string; color: string }[] }>();
+    const push = (item: SupplyItem, label: string, color: string) => {
+      const entry = map.get(item.id) ?? { item, reasons: [] };
+      entry.reasons.push({ label, color });
+      map.set(item.id, entry);
+    };
+    summary.expired.forEach((i) => push(i, 'EXPIRED', Colors.statusRed));
+    summary.low.forEach((i) => push(i, 'LOW STOCK', Colors.statusRed));
+    summary.expiringSoon.forEach((i) => push(i, 'EXPIRES SOON', Colors.statusAmber));
+    return [...map.values()];
+  }, [supplies]);
   const totalChecked = checklistStats.reduce((sum, s) => sum + s.completed, 0);
   const totalItems = checklistStats.reduce((sum, s) => sum + s.total, 0);
   const overallPercent = totalItems > 0 ? Math.round((totalChecked / totalItems) * 100) : 0;
@@ -149,6 +164,38 @@ export default function DashboardScreen() {
           onPress={() => router.push('/(tabs)/intel/guides' as Href)}
         />
       </View>
+
+      {inventoryAlertRows.length > 0 && (
+        <>
+          <Text style={styles.sectionTitle}>INVENTORY ALERTS</Text>
+          {inventoryAlertRows.map(({ item, reasons }) => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.invAlertRow}
+              onPress={() =>
+                router.push({ pathname: '/add-supply', params: { id: item.id } } as unknown as Href)
+              }
+              activeOpacity={0.7}
+            >
+              <AlertTriangle color={reasons[0].color} size={16} />
+              <View style={styles.invAlertInfo}>
+                <Text style={styles.invAlertName} numberOfLines={1}>{item.name}</Text>
+                <Text style={styles.invAlertSub} numberOfLines={1}>
+                  {item.quantity} {item.unit}
+                  {item.expirationDate ? ` · Exp ${item.expirationDate}` : ''}
+                </Text>
+              </View>
+              <View style={styles.invAlertBadges}>
+                {reasons.map((r) => (
+                  <View key={r.label} style={[styles.invAlertBadge, { backgroundColor: r.color + '22' }]}>
+                    <Text style={[styles.invAlertBadgeText, { color: r.color }]}>{r.label}</Text>
+                  </View>
+                ))}
+              </View>
+            </TouchableOpacity>
+          ))}
+        </>
+      )}
 
       <Text style={styles.sectionTitle}>QUICK ACCESS</Text>
       <View style={styles.quickGrid}>
@@ -435,6 +482,44 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600' as const,
     textAlign: 'center',
+  },
+  invAlertRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: Colors.bgCard,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  invAlertInfo: {
+    flex: 1,
+  },
+  invAlertName: {
+    color: Colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '600' as const,
+  },
+  invAlertSub: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    marginTop: 1,
+  },
+  invAlertBadges: {
+    gap: 4,
+    alignItems: 'flex-end' as const,
+  },
+  invAlertBadge: {
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  invAlertBadgeText: {
+    fontSize: 8,
+    fontWeight: '800' as const,
+    letterSpacing: 0.8,
   },
   checklistRow: {
     flexDirection: 'row',

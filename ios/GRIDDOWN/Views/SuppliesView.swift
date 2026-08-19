@@ -5,6 +5,8 @@ struct SuppliesView: View {
     @State private var filterCategory: SupplyCategory? = nil
     @State private var showingAddSupply = false
     @State private var searchQuery: String = ""
+    @State private var editingSupply: SupplyItem?
+    @State private var pendingDelete: SupplyItem?
 
     var filtered: [SupplyItem] {
         var result = store.supplies
@@ -59,6 +61,26 @@ struct SuppliesView: View {
         }
         .sheet(isPresented: $showingAddSupply) {
             AddSupplyView()
+        }
+        .sheet(item: $editingSupply) { item in
+            AddSupplyView(existing: item)
+        }
+        .confirmationDialog(
+            "Remove \"\(pendingDelete?.name ?? "item")\" from inventory?",
+            isPresented: Binding(
+                get: { pendingDelete != nil },
+                set: { if !$0 { pendingDelete = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Remove", role: .destructive) {
+                if let item = pendingDelete {
+                    store.removeSupply(item.id)
+                    UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                }
+                pendingDelete = nil
+            }
+            Button("Cancel", role: .cancel) { pendingDelete = nil }
         }
     }
 
@@ -133,32 +155,55 @@ struct SuppliesView: View {
 
     private func supplyCard(_ item: SupplyItem) -> some View {
         let isLow = item.quantity <= item.minimumQuantity
-        return HStack(spacing: 10) {
-            Image(systemName: item.category.iconName)
-                .font(.system(size: 16))
-                .foregroundStyle(item.category.color)
-                .frame(width: 34, height: 34)
-                .background(Theme.bgElevated)
-                .clipShape(.rect(cornerRadius: 8))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.name)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Theme.textPrimary)
-                Text("\(item.quantity) \(item.unit)\(item.expirationDate.map { " · Exp: \($0)" } ?? "")")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Theme.textSecondary)
-            }
-            Spacer()
-            if isLow {
-                Image(systemName: "exclamationmark.triangle.fill")
+        let expStatus = SupplyAlerts.expirationStatus(for: item)
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            editingSupply = item
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: item.category.iconName)
                     .font(.system(size: 16))
-                    .foregroundStyle(Theme.statusRed)
+                    .foregroundStyle(item.category.color)
+                    .frame(width: 34, height: 34)
+                    .background(Theme.bgElevated)
+                    .clipShape(.rect(cornerRadius: 8))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.name)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                    Text("\(item.quantity) \(item.unit)\(item.expirationDate.map { " · Exp: \($0)" } ?? "")")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                Spacer()
+                if isLow || expStatus == .expired {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Theme.statusRed)
+                } else if expStatus == .soon {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Theme.statusAmber)
+                }
+            }
+            .padding(12)
+            .background(Theme.bgCard)
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 1))
+            .clipShape(.rect(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button {
+                editingSupply = item
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            Button(role: .destructive) {
+                pendingDelete = item
+            } label: {
+                Label("Delete", systemImage: "trash")
             }
         }
-        .padding(12)
-        .background(Theme.bgCard)
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 1))
-        .clipShape(.rect(cornerRadius: 10))
         .padding(.bottom, 6)
     }
 }

@@ -24,6 +24,7 @@ import {
   Crosshair,
   Route as RouteIcon,
   Trash2,
+  Pencil,
   X,
   Fuel,
   Building2,
@@ -358,6 +359,14 @@ export default function MapScreen() {
                       <Text style={styles.webPoiName}>{poi.name}</Text>
                       <Text style={styles.webPoiCategory}>{config.label}</Text>
                     </View>
+                    <TouchableOpacity
+                      onPress={() =>
+                        router.push({ pathname: '/add-poi', params: { id: poi.id } } as unknown as Href)
+                      }
+                      style={{ marginRight: 12 }}
+                    >
+                      <Pencil color={Colors.orangeLight} size={16} />
+                    </TouchableOpacity>
                     <TouchableOpacity onPress={() => handleDeletePoi(poi)}>
                       <Trash2 color={Colors.statusRed} size={16} />
                     </TouchableOpacity>
@@ -379,6 +388,14 @@ export default function MapScreen() {
                       {route.waypoints.length} waypoints
                     </Text>
                   </View>
+                  <TouchableOpacity
+                    onPress={() =>
+                      router.push({ pathname: '/add-route', params: { id: route.id } } as unknown as Href)
+                    }
+                    style={{ marginRight: 12 }}
+                  >
+                    <Pencil color={Colors.orangeLight} size={16} />
+                  </TouchableOpacity>
                   <TouchableOpacity onPress={() => handleDeleteRoute(route)}>
                     <Trash2 color={Colors.statusRed} size={16} />
                   </TouchableOpacity>
@@ -705,6 +722,16 @@ export default function MapScreen() {
                 {POI_CATEGORY_CONFIG[selectedPoi.category].label}
               </Text>
             </View>
+            <TouchableOpacity
+              onPress={() => {
+                const poiId = selectedPoi.id;
+                setSelectedPoi(null);
+                router.push({ pathname: '/add-poi', params: { id: poiId } } as unknown as Href);
+              }}
+              style={styles.infoCardAction}
+            >
+              <Pencil color={Colors.orangeLight} size={16} />
+            </TouchableOpacity>
             <TouchableOpacity onPress={() => handleDeletePoi(selectedPoi)} style={styles.infoCardAction}>
               <Trash2 color={Colors.statusRed} size={16} />
             </TouchableOpacity>
@@ -731,6 +758,16 @@ export default function MapScreen() {
                 {selectedRoute.waypoints.length} waypoints
               </Text>
             </View>
+            <TouchableOpacity
+              onPress={() => {
+                const routeId = selectedRoute.id;
+                setSelectedRoute(null);
+                router.push({ pathname: '/add-route', params: { id: routeId } } as unknown as Href);
+              }}
+              style={styles.infoCardAction}
+            >
+              <Pencil color={Colors.orangeLight} size={16} />
+            </TouchableOpacity>
             <TouchableOpacity onPress={() => handleDeleteRoute(selectedRoute)} style={styles.infoCardAction}>
               <Trash2 color={Colors.statusRed} size={16} />
             </TouchableOpacity>

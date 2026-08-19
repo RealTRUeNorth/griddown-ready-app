@@ -103,13 +103,27 @@ struct AddMemberView: View {
     @Environment(AppStore.self) var store
     @Environment(\.dismiss) var dismiss
 
-    @State private var name: String = ""
-    @State private var role: String = ""
-    @State private var status: MemberStatus = .unknown
-    @State private var skillsText: String = ""
-    @State private var phone: String = ""
-    @State private var notes: String = ""
+    let existing: GroupMember?
+
+    @State private var name: String
+    @State private var role: String
+    @State private var status: MemberStatus
+    @State private var skillsText: String
+    @State private var phone: String
+    @State private var notes: String
     @FocusState private var focused: Bool
+
+    init(existing: GroupMember? = nil) {
+        self.existing = existing
+        _name = State(initialValue: existing?.name ?? "")
+        _role = State(initialValue: existing?.role ?? "")
+        _status = State(initialValue: existing?.status ?? .unknown)
+        _skillsText = State(initialValue: existing?.skills.joined(separator: ", ") ?? "")
+        _phone = State(initialValue: existing?.phone ?? "")
+        _notes = State(initialValue: existing?.notes ?? "")
+    }
+
+    var isEditing: Bool { existing != nil }
 
     var canSave: Bool { !name.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -118,7 +132,9 @@ struct AddMemberView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     FormHeader(icon: "person.crop.circle.badge.plus", iconColor: Theme.orange,
-                               iconBg: Theme.orangeMuted, title: "Add Group Member", subtitle: "Register a new member in your roster")
+                               iconBg: Theme.orangeMuted,
+                               title: isEditing ? "Edit Group Member" : "Add Group Member",
+                               subtitle: isEditing ? "Update this member's details" : "Register a new member in your roster")
 
                     FormFieldLabel(text: "NAME *")
                     FormTextField(placeholder: "Member name or callsign", text: $name)
@@ -159,17 +175,23 @@ struct AddMemberView: View {
                     FormFieldLabel(text: "NOTES")
                     FormTextField(placeholder: "Additional notes", text: $notes, multiline: true)
 
-                    FormSaveButton(title: "ADD MEMBER", color: Theme.orange, enabled: canSave) {
+                    FormSaveButton(title: isEditing ? "SAVE CHANGES" : "ADD MEMBER", color: Theme.orange, enabled: canSave) {
                         let member = GroupMember(
-                            id: "m_\(Int(Date().timeIntervalSince1970))",
+                            id: existing?.id ?? "m_\(Int(Date().timeIntervalSince1970))",
                             name: name.trimmingCharacters(in: .whitespaces),
                             role: role.trimmingCharacters(in: .whitespaces).isEmpty ? "Member" : role.trimmingCharacters(in: .whitespaces),
                             skills: skillsText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty },
                             status: status,
                             phone: phone.trimmingCharacters(in: .whitespaces).isEmpty ? nil : phone.trimmingCharacters(in: .whitespaces),
-                            notes: notes.trimmingCharacters(in: .whitespaces).isEmpty ? nil : notes.trimmingCharacters(in: .whitespaces)
+                            notes: notes.trimmingCharacters(in: .whitespaces).isEmpty ? nil : notes.trimmingCharacters(in: .whitespaces),
+                            location: existing?.location,
+                            locationUpdatedAt: existing?.locationUpdatedAt
                         )
-                        store.addMember(member)
+                        if existing != nil {
+                            store.updateMember(member)
+                        } else {
+                            store.addMember(member)
+                        }
                         dismiss()
                     }
                 }
@@ -177,7 +199,7 @@ struct AddMemberView: View {
                 .padding(.bottom, 40)
             }
             .background(Theme.bg.ignoresSafeArea())
-            .navigationTitle("Add Member")
+            .navigationTitle(isEditing ? "Edit Member" : "Add Member")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -196,13 +218,28 @@ struct AddSupplyView: View {
     @Environment(AppStore.self) var store
     @Environment(\.dismiss) var dismiss
 
-    @State private var name: String = ""
-    @State private var category: SupplyCategory = .other
-    @State private var quantityText: String = ""
-    @State private var unit: String = ""
-    @State private var minQuantityText: String = ""
-    @State private var expirationDate: String = ""
-    @State private var notes: String = ""
+    let existing: SupplyItem?
+
+    @State private var name: String
+    @State private var category: SupplyCategory
+    @State private var quantityText: String
+    @State private var unit: String
+    @State private var minQuantityText: String
+    @State private var expirationDate: String
+    @State private var notes: String
+
+    init(existing: SupplyItem? = nil) {
+        self.existing = existing
+        _name = State(initialValue: existing?.name ?? "")
+        _category = State(initialValue: existing?.category ?? .other)
+        _quantityText = State(initialValue: existing.map { String($0.quantity) } ?? "")
+        _unit = State(initialValue: existing?.unit ?? "")
+        _minQuantityText = State(initialValue: existing.map { String($0.minimumQuantity) } ?? "")
+        _expirationDate = State(initialValue: existing?.expirationDate ?? "")
+        _notes = State(initialValue: existing?.notes ?? "")
+    }
+
+    var isEditing: Bool { existing != nil }
 
     var canSave: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty &&
@@ -214,7 +251,9 @@ struct AddSupplyView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     FormHeader(icon: "shippingbox.fill", iconColor: Theme.orange,
-                               iconBg: Theme.orangeMuted, title: "Add Supply Item", subtitle: "Track inventory quantities and alerts")
+                               iconBg: Theme.orangeMuted,
+                               title: isEditing ? "Edit Supply Item" : "Add Supply Item",
+                               subtitle: "Track inventory quantities and alerts")
 
                     FormFieldLabel(text: "ITEM NAME *")
                     FormTextField(placeholder: "e.g. Bottled Water, MRE, Bandages", text: $name)
@@ -259,10 +298,10 @@ struct AddSupplyView: View {
                     FormFieldLabel(text: "NOTES")
                     FormTextField(placeholder: "Location, brand, or other details", text: $notes, multiline: true)
 
-                    FormSaveButton(title: "ADD ITEM", color: Theme.orange, enabled: canSave) {
+                    FormSaveButton(title: isEditing ? "SAVE CHANGES" : "ADD ITEM", color: Theme.orange, enabled: canSave) {
                         let qty = Int(quantityText) ?? 0
                         let item = SupplyItem(
-                            id: "s_\(Int(Date().timeIntervalSince1970))",
+                            id: existing?.id ?? "s_\(Int(Date().timeIntervalSince1970))",
                             name: name.trimmingCharacters(in: .whitespaces),
                             category: category,
                             quantity: qty,
@@ -271,7 +310,11 @@ struct AddSupplyView: View {
                             expirationDate: expirationDate.trimmingCharacters(in: .whitespaces).isEmpty ? nil : expirationDate.trimmingCharacters(in: .whitespaces),
                             notes: notes.trimmingCharacters(in: .whitespaces).isEmpty ? nil : notes.trimmingCharacters(in: .whitespaces)
                         )
-                        store.addSupply(item)
+                        if existing != nil {
+                            store.updateSupply(item)
+                        } else {
+                            store.addSupply(item)
+                        }
                         dismiss()
                     }
                 }
@@ -279,7 +322,7 @@ struct AddSupplyView: View {
                 .padding(.bottom, 40)
             }
             .background(Theme.bg.ignoresSafeArea())
-            .navigationTitle("Add Supply")
+            .navigationTitle(isEditing ? "Edit Supply" : "Add Supply")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -297,11 +340,24 @@ struct AddPoiView: View {
     @Environment(AppStore.self) var store
     @Environment(\.dismiss) var dismiss
 
-    @State private var name: String = ""
-    @State private var category: POICategory = .rallyPoint
-    @State private var latText: String = ""
-    @State private var lngText: String = ""
-    @State private var notes: String = ""
+    let existing: POI?
+
+    @State private var name: String
+    @State private var category: POICategory
+    @State private var latText: String
+    @State private var lngText: String
+    @State private var notes: String
+
+    init(existing: POI? = nil) {
+        self.existing = existing
+        _name = State(initialValue: existing?.name ?? "")
+        _category = State(initialValue: existing?.category ?? .rallyPoint)
+        _latText = State(initialValue: existing.map { String($0.coordinates.latitude) } ?? "")
+        _lngText = State(initialValue: existing.map { String($0.coordinates.longitude) } ?? "")
+        _notes = State(initialValue: existing?.notes ?? "")
+    }
+
+    var isEditing: Bool { existing != nil }
 
     var canSave: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty &&
@@ -313,7 +369,9 @@ struct AddPoiView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     FormHeader(icon: "mappin.circle.fill", iconColor: Theme.orange,
-                               iconBg: Theme.orangeMuted, title: "New Point of Interest", subtitle: "Mark a location on the tactical map")
+                               iconBg: Theme.orangeMuted,
+                               title: isEditing ? "Edit Point of Interest" : "New Point of Interest",
+                               subtitle: isEditing ? "Update this map location" : "Mark a location on the tactical map")
 
                     FormFieldLabel(text: "NAME *")
                     FormTextField(placeholder: "e.g. Water Tower, Safe House...", text: $name)
@@ -355,17 +413,21 @@ struct AddPoiView: View {
                     FormFieldLabel(text: "NOTES (OPTIONAL)")
                     FormTextField(placeholder: "Additional details...", text: $notes, multiline: true)
 
-                    FormSaveButton(title: "Add Point of Interest", color: Theme.orange, enabled: canSave) {
+                    FormSaveButton(title: isEditing ? "Save Changes" : "Add Point of Interest", color: Theme.orange, enabled: canSave) {
                         guard let lat = Double(latText), let lng = Double(lngText) else { return }
                         let poi = POI(
-                            id: "poi_\(Int(Date().timeIntervalSince1970))",
+                            id: existing?.id ?? "poi_\(Int(Date().timeIntervalSince1970))",
                             name: name.trimmingCharacters(in: .whitespaces),
                             category: category,
                             coordinates: Coordinates(latitude: lat, longitude: lng),
                             notes: notes.trimmingCharacters(in: .whitespaces).isEmpty ? nil : notes.trimmingCharacters(in: .whitespaces),
-                            createdAt: ISO8601DateFormatter().string(from: Date())
+                            createdAt: existing?.createdAt ?? ISO8601DateFormatter().string(from: Date())
                         )
-                        store.addPoi(poi)
+                        if existing != nil {
+                            store.updatePoi(poi)
+                        } else {
+                            store.addPoi(poi)
+                        }
                         dismiss()
                     }
                 }
@@ -373,7 +435,7 @@ struct AddPoiView: View {
                 .padding(.bottom, 40)
             }
             .background(Theme.bg.ignoresSafeArea())
-            .navigationTitle("Add POI")
+            .navigationTitle(isEditing ? "Edit POI" : "Add POI")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -391,14 +453,26 @@ struct AddRouteView: View {
     @Environment(AppStore.self) var store
     @Environment(\.dismiss) var dismiss
 
-    @State private var name: String = ""
-    @State private var selectedColorIndex: Int = 0
-    @State private var notes: String = ""
-    @State private var waypoints: [Coordinates] = []
+    let existing: Route?
+
+    @State private var name: String
+    @State private var selectedColorIndex: Int
+    @State private var notes: String
+    @State private var waypoints: [Coordinates]
     @State private var latInput: String = ""
     @State private var lngInput: String = ""
 
     private let colors = MockData.routeColors
+
+    init(existing: Route? = nil) {
+        self.existing = existing
+        _name = State(initialValue: existing?.name ?? "")
+        _selectedColorIndex = State(initialValue: existing.flatMap { MockData.routeColors.firstIndex(of: $0.color) } ?? 0)
+        _notes = State(initialValue: existing?.notes ?? "")
+        _waypoints = State(initialValue: existing?.waypoints ?? [])
+    }
+
+    var isEditing: Bool { existing != nil }
 
     var canSave: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty && waypoints.count >= 2
@@ -409,7 +483,9 @@ struct AddRouteView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     FormHeader(icon: "route", iconColor: Theme.oliveLight,
-                               iconBg: Theme.oliveMuted, title: "New Route", subtitle: "Define a path with waypoints")
+                               iconBg: Theme.oliveMuted,
+                               title: isEditing ? "Edit Route" : "New Route",
+                               subtitle: isEditing ? "Update this route's path and details" : "Define a path with waypoints")
 
                     FormFieldLabel(text: "NAME")
                     FormTextField(placeholder: "e.g. Bug-Out Route Alpha...", text: $name)
@@ -519,16 +595,20 @@ struct AddRouteView: View {
                     FormFieldLabel(text: "NOTES (OPTIONAL)")
                     FormTextField(placeholder: "Route details, hazards, landmarks...", text: $notes, multiline: true)
 
-                    FormSaveButton(title: "Create Route", color: Theme.olive, enabled: canSave) {
+                    FormSaveButton(title: isEditing ? "Save Changes" : "Create Route", color: Theme.olive, enabled: canSave) {
                         let route = Route(
-                            id: "route_\(Int(Date().timeIntervalSince1970))",
+                            id: existing?.id ?? "route_\(Int(Date().timeIntervalSince1970))",
                             name: name.trimmingCharacters(in: .whitespaces),
                             color: colors[selectedColorIndex],
                             waypoints: waypoints,
                             notes: notes.trimmingCharacters(in: .whitespaces).isEmpty ? nil : notes.trimmingCharacters(in: .whitespaces),
-                            createdAt: ISO8601DateFormatter().string(from: Date())
+                            createdAt: existing?.createdAt ?? ISO8601DateFormatter().string(from: Date())
                         )
-                        store.addRoute(route)
+                        if existing != nil {
+                            store.updateRoute(route)
+                        } else {
+                            store.addRoute(route)
+                        }
                         dismiss()
                     }
                 }
@@ -536,7 +616,7 @@ struct AddRouteView: View {
                 .padding(.bottom, 40)
             }
             .background(Theme.bg.ignoresSafeArea())
-            .navigationTitle("Add Route")
+            .navigationTitle(isEditing ? "Edit Route" : "Add Route")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -562,15 +642,32 @@ struct AddChannelView: View {
     @Environment(AppStore.self) var store
     @Environment(\.dismiss) var dismiss
 
-    @State private var name: String = ""
-    @State private var band: CommsBand = .FRS
-    @State private var frequency: String = ""
-    @State private var mode: CommsMode = .simplex
-    @State private var purpose: String = ""
-    @State private var ctcssTone: String = ""
-    @State private var power: String = ""
-    @State private var notes: String = ""
-    @State private var isPrimary: Bool = false
+    let existing: CommsChannel?
+
+    @State private var name: String
+    @State private var band: CommsBand
+    @State private var frequency: String
+    @State private var mode: CommsMode
+    @State private var purpose: String
+    @State private var ctcssTone: String
+    @State private var power: String
+    @State private var notes: String
+    @State private var isPrimary: Bool
+
+    init(existing: CommsChannel? = nil) {
+        self.existing = existing
+        _name = State(initialValue: existing?.name ?? "")
+        _band = State(initialValue: existing?.band ?? .FRS)
+        _frequency = State(initialValue: existing?.frequency ?? "")
+        _mode = State(initialValue: existing?.mode ?? .simplex)
+        _purpose = State(initialValue: existing?.purpose ?? "")
+        _ctcssTone = State(initialValue: existing?.ctcssTone ?? "")
+        _power = State(initialValue: existing?.power ?? "")
+        _notes = State(initialValue: existing?.notes ?? "")
+        _isPrimary = State(initialValue: existing?.isPrimary ?? false)
+    }
+
+    var isEditing: Bool { existing != nil }
 
     var canSave: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty &&
@@ -582,7 +679,9 @@ struct AddChannelView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     FormHeader(icon: "antenna.radiowaves.left.and.right", iconColor: Theme.orange,
-                               iconBg: Theme.orangeMuted, title: "Add Comms Channel", subtitle: "Define a frequency for group communications")
+                               iconBg: Theme.orangeMuted,
+                               title: isEditing ? "Edit Comms Channel" : "Add Comms Channel",
+                               subtitle: isEditing ? "Update this frequency assignment" : "Define a frequency for group communications")
 
                     FormFieldLabel(text: "CHANNEL NAME *")
                     FormTextField(placeholder: "e.g. PRIMARY, TACTICAL-1", text: $name)
@@ -667,9 +766,9 @@ struct AddChannelView: View {
                     .clipShape(.rect(cornerRadius: 10))
                     .padding(.top, 16)
 
-                    FormSaveButton(title: "ADD CHANNEL", color: Theme.orange, enabled: canSave) {
+                    FormSaveButton(title: isEditing ? "SAVE CHANGES" : "ADD CHANNEL", color: Theme.orange, enabled: canSave) {
                         let channel = CommsChannel(
-                            id: "ch_\(Int(Date().timeIntervalSince1970))",
+                            id: existing?.id ?? "ch_\(Int(Date().timeIntervalSince1970))",
                             name: name.trimmingCharacters(in: .whitespaces).uppercased(),
                             band: band,
                             frequency: frequency.trimmingCharacters(in: .whitespaces),
@@ -680,7 +779,11 @@ struct AddChannelView: View {
                             notes: notes.trimmingCharacters(in: .whitespaces).isEmpty ? nil : notes.trimmingCharacters(in: .whitespaces),
                             isPrimary: isPrimary
                         )
-                        store.addCommsChannel(channel)
+                        if existing != nil {
+                            store.updateCommsChannel(channel)
+                        } else {
+                            store.addCommsChannel(channel)
+                        }
                         dismiss()
                     }
                 }
@@ -688,7 +791,7 @@ struct AddChannelView: View {
                 .padding(.bottom, 40)
             }
             .background(Theme.bg.ignoresSafeArea())
-            .navigationTitle("Add Channel")
+            .navigationTitle(isEditing ? "Edit Channel" : "Add Channel")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -706,14 +809,30 @@ struct AddRepeaterView: View {
     @Environment(AppStore.self) var store
     @Environment(\.dismiss) var dismiss
 
-    @State private var name: String = ""
-    @State private var inputFreq: String = ""
-    @State private var outputFreq: String = ""
-    @State private var offset: String = ""
-    @State private var ctcssTone: String = ""
-    @State private var location: String = ""
-    @State private var range: String = ""
-    @State private var notes: String = ""
+    let existing: CommsRepeater?
+
+    @State private var name: String
+    @State private var inputFreq: String
+    @State private var outputFreq: String
+    @State private var offset: String
+    @State private var ctcssTone: String
+    @State private var location: String
+    @State private var range: String
+    @State private var notes: String
+
+    init(existing: CommsRepeater? = nil) {
+        self.existing = existing
+        _name = State(initialValue: existing?.name ?? "")
+        _inputFreq = State(initialValue: existing?.inputFreq ?? "")
+        _outputFreq = State(initialValue: existing?.outputFreq ?? "")
+        _offset = State(initialValue: existing?.offset ?? "")
+        _ctcssTone = State(initialValue: existing?.ctcssTone ?? "")
+        _location = State(initialValue: existing?.location ?? "")
+        _range = State(initialValue: existing?.range ?? "")
+        _notes = State(initialValue: existing?.notes ?? "")
+    }
+
+    var isEditing: Bool { existing != nil }
 
     var canSave: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty &&
@@ -726,7 +845,9 @@ struct AddRepeaterView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     FormHeader(icon: "tower.signal", iconColor: Theme.orange,
-                               iconBg: Theme.orangeMuted, title: "Add Repeater", subtitle: "Register a repeater station to extend comms range")
+                               iconBg: Theme.orangeMuted,
+                               title: isEditing ? "Edit Repeater" : "Add Repeater",
+                               subtitle: isEditing ? "Update this repeater station" : "Register a repeater station to extend comms range")
 
                     FormFieldLabel(text: "REPEATER NAME *")
                     FormTextField(placeholder: "e.g. HILLTOP-1, VALLEY-RPT", text: $name)
@@ -762,19 +883,24 @@ struct AddRepeaterView: View {
                     FormFieldLabel(text: "NOTES")
                     FormTextField(placeholder: "Power source, access info, etc.", text: $notes, multiline: true)
 
-                    FormSaveButton(title: "ADD REPEATER", color: Theme.orange, enabled: canSave) {
+                    FormSaveButton(title: isEditing ? "SAVE CHANGES" : "ADD REPEATER", color: Theme.orange, enabled: canSave) {
                         let repeater = CommsRepeater(
-                            id: "rpt_\(Int(Date().timeIntervalSince1970))",
+                            id: existing?.id ?? "rpt_\(Int(Date().timeIntervalSince1970))",
                             name: name.trimmingCharacters(in: .whitespaces).uppercased(),
                             inputFreq: inputFreq.trimmingCharacters(in: .whitespaces),
                             outputFreq: outputFreq.trimmingCharacters(in: .whitespaces),
                             offset: offset.trimmingCharacters(in: .whitespaces).isEmpty ? "N/A" : offset.trimmingCharacters(in: .whitespaces),
                             ctcssTone: ctcssTone.trimmingCharacters(in: .whitespaces).isEmpty ? "None" : ctcssTone.trimmingCharacters(in: .whitespaces),
                             location: location.trimmingCharacters(in: .whitespaces).isEmpty ? nil : location.trimmingCharacters(in: .whitespaces),
+                            coordinates: existing?.coordinates,
                             range: range.trimmingCharacters(in: .whitespaces).isEmpty ? nil : range.trimmingCharacters(in: .whitespaces),
                             notes: notes.trimmingCharacters(in: .whitespaces).isEmpty ? nil : notes.trimmingCharacters(in: .whitespaces)
                         )
-                        store.addCommsRepeater(repeater)
+                        if existing != nil {
+                            store.updateCommsRepeater(repeater)
+                        } else {
+                            store.addCommsRepeater(repeater)
+                        }
                         dismiss()
                     }
                 }
@@ -782,7 +908,7 @@ struct AddRepeaterView: View {
                 .padding(.bottom, 40)
             }
             .background(Theme.bg.ignoresSafeArea())
-            .navigationTitle("Add Repeater")
+            .navigationTitle(isEditing ? "Edit Repeater" : "Add Repeater")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

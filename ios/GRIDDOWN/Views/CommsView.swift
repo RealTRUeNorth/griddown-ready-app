@@ -6,6 +6,10 @@ struct CommsView: View {
     @State private var expandedProtocol: String?
     @State private var showingAddChannel = false
     @State private var showingAddRepeater = false
+    @State private var editingChannel: CommsChannel?
+    @State private var editingRepeater: CommsRepeater?
+    @State private var pendingDeleteChannel: CommsChannel?
+    @State private var pendingDeleteRepeater: CommsRepeater?
 
     enum CommsTab: String, CaseIterable {
         case channels, repeaters, protocols, reference
@@ -37,6 +41,46 @@ struct CommsView: View {
         .sheet(isPresented: $showingAddRepeater) {
             AddRepeaterView()
         }
+        .sheet(item: $editingChannel) { channel in
+            AddChannelView(existing: channel)
+        }
+        .sheet(item: $editingRepeater) { repeater in
+            AddRepeaterView(existing: repeater)
+        }
+        .confirmationDialog(
+            "Remove \"\(pendingDeleteChannel?.name ?? "channel")\" from your comms plan?",
+            isPresented: Binding(
+                get: { pendingDeleteChannel != nil },
+                set: { if !$0 { pendingDeleteChannel = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Remove", role: .destructive) {
+                if let channel = pendingDeleteChannel {
+                    store.removeCommsChannel(channel.id)
+                    UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                }
+                pendingDeleteChannel = nil
+            }
+            Button("Cancel", role: .cancel) { pendingDeleteChannel = nil }
+        }
+        .confirmationDialog(
+            "Remove \"\(pendingDeleteRepeater?.name ?? "repeater")\" from your comms plan?",
+            isPresented: Binding(
+                get: { pendingDeleteRepeater != nil },
+                set: { if !$0 { pendingDeleteRepeater = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Remove", role: .destructive) {
+                if let repeater = pendingDeleteRepeater {
+                    store.removeCommsRepeater(repeater.id)
+                    UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                }
+                pendingDeleteRepeater = nil
+            }
+            Button("Cancel", role: .cancel) { pendingDeleteRepeater = nil }
+        }
     }
 
     private var tabBar: some View {
@@ -67,7 +111,25 @@ struct CommsView: View {
     private var channelsTab: some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(store.commsChannels) { channel in
-                channelCard(channel)
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    editingChannel = channel
+                } label: {
+                    channelCard(channel)
+                }
+                .buttonStyle(.plain)
+                .contextMenu {
+                    Button {
+                        editingChannel = channel
+                    } label: {
+                        Label("Edit", systemImage: "pencil")
+                    }
+                    Button(role: .destructive) {
+                        pendingDeleteChannel = channel
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
             }
         }
         .overlay(alignment: .bottomTrailing) {
@@ -147,7 +209,25 @@ struct CommsView: View {
                 EmptyStateView(icon: "antenna.radiowaves.left.and.right", title: "No repeaters", subtitle: "Add repeater stations to extend your comms range")
             }
             ForEach(store.commsRepeaters) { rpt in
-                repeaterCard(rpt)
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    editingRepeater = rpt
+                } label: {
+                    repeaterCard(rpt)
+                }
+                .buttonStyle(.plain)
+                .contextMenu {
+                    Button {
+                        editingRepeater = rpt
+                    } label: {
+                        Label("Edit", systemImage: "pencil")
+                    }
+                    Button(role: .destructive) {
+                        pendingDeleteRepeater = rpt
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
             }
         }
         .overlay(alignment: .bottomTrailing) {

@@ -2,6 +2,12 @@ import SwiftUI
 
 struct IntelView: View {
     @Environment(AppStore.self) var store
+    @State private var backupAlertTitle: String = ""
+    @State private var backupAlertMessage: String = ""
+    @State private var showingBackupAlert = false
+    @State private var pendingImportRaw: String?
+    @State private var pendingImportSummary: String = ""
+    @State private var showingImportConfirm = false
 
     var body: some View {
         ScrollView {
@@ -43,6 +49,32 @@ struct IntelView: View {
                     )
                 }
                 .buttonStyle(.plain)
+
+                SectionLabel(text: "DATA & BACKUP")
+
+                Button {
+                    handleExportBackup()
+                } label: {
+                    NavCard(
+                        icon: "square.and.arrow.up.fill", iconColor: Theme.greenLight,
+                        iconBg: Theme.greenLight.opacity(0.15),
+                        title: "Export Ops Backup",
+                        description: "Copy your full ops kit as JSON to the clipboard"
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    handleImportBackup()
+                } label: {
+                    NavCard(
+                        icon: "square.and.arrow.down.fill", iconColor: Theme.amberLight,
+                        iconBg: Theme.amberLight.opacity(0.15),
+                        title: "Import Ops Backup",
+                        description: "Restore an ops kit from clipboard JSON"
+                    )
+                }
+                .buttonStyle(.plain)
             }
             .padding(16)
             .padding(.bottom, 40)
@@ -50,6 +82,61 @@ struct IntelView: View {
         .background(Theme.bg.ignoresSafeArea())
         .navigationTitle("Intel")
         .navigationBarTitleDisplayMode(.inline)
+        .alert(backupAlertTitle, isPresented: $showingBackupAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(backupAlertMessage)
+        }
+        .alert("Replace All Data?", isPresented: $showingImportConfirm) {
+            Button("Cancel", role: .cancel) { pendingImportRaw = nil }
+            Button("Import", role: .destructive) {
+                let raw = pendingImportRaw
+                pendingImportRaw = nil
+                let ok = raw.map { store.importOpsBackup($0) } ?? false
+                UINotificationFeedbackGenerator().notificationOccurred(ok ? .success : .error)
+                Task {
+                    try? await Task.sleep(for: .milliseconds(450))
+                    backupAlertTitle = ok ? "Import Complete" : "Import Failed"
+                    backupAlertMessage = ok ? "Ops kit restored from backup." : "Could not restore from this backup."
+                    showingBackupAlert = true
+                }
+            }
+        } message: {
+            Text("This will overwrite everything with the backup:\n\n\(pendingImportSummary)")
+        }
+    }
+
+    private func handleExportBackup() {
+        guard let json = store.exportOpsBackup() else {
+            backupAlertTitle = "Export Failed"
+            backupAlertMessage = "Could not generate the backup."
+            showingBackupAlert = true
+            return
+        }
+        UIPasteboard.general.string = json
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        backupAlertTitle = "Ops Backup Copied"
+        backupAlertMessage = "Full ops kit copied to clipboard:\n\n\(store.opsCountsSummary)\n\nPaste it into a note, message, or another device to store it."
+        showingBackupAlert = true
+    }
+
+    private func handleImportBackup() {
+        guard let raw = UIPasteboard.general.string,
+              !raw.trimmingCharacters(in: .whitespaces).isEmpty else {
+            backupAlertTitle = "Nothing to Import"
+            backupAlertMessage = "Copy a GRIDDOWN ops backup to your clipboard first."
+            showingBackupAlert = true
+            return
+        }
+        guard let summary = store.opsBackupSummary(raw) else {
+            backupAlertTitle = "Invalid Backup"
+            backupAlertMessage = "Clipboard contents are not a valid GRIDDOWN ops backup."
+            showingBackupAlert = true
+            return
+        }
+        pendingImportRaw = raw
+        pendingImportSummary = summary
+        showingImportConfirm = true
     }
 }
 
@@ -57,6 +144,8 @@ struct GroupView: View {
     @Environment(AppStore.self) var store
     @State private var showingAddMember = false
     @State private var searchQuery: String = ""
+    @State private var editingMember: GroupMember?
+    @State private var pendingDelete: GroupMember?
 
     var filteredMembers: [GroupMember] {
         guard !searchQuery.isEmpty else { return store.members }
@@ -108,6 +197,18 @@ struct GroupView: View {
                         memberCard(member)
                     }
                     .buttonStyle(.plain)
+                    .contextMenu {
+                        Button {
+                            editingMember = member
+                        } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+                        Button(role: .destructive) {
+                            pendingDelete = member
+                        } label: {
+                            Label("Remove", systemImage: "trash")
+                        }
+                    }
                 }
 
                 if filteredMembers.isEmpty && !store.members.isEmpty {
@@ -130,6 +231,26 @@ struct GroupView: View {
         }
         .sheet(isPresented: $showingAddMember) {
             AddMemberView()
+        }
+        .sheet(item: $editingMember) { member in
+            AddMemberView(existing: member)
+        }
+        .confirmationDialog(
+            "Remove \(pendingDelete?.name ?? "member") from the group?",
+            isPresented: Binding(
+                get: { pendingDelete != nil },
+                set: { if !$0 { pendingDelete = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Remove", role: .destructive) {
+                if let member = pendingDelete {
+                    store.removeMember(member.id)
+                    UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                }
+                pendingDelete = nil
+            }
+            Button("Cancel", role: .cancel) { pendingDelete = nil }
         }
     }
 

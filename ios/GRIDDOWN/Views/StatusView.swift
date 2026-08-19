@@ -10,6 +10,7 @@ struct StatusView: View {
                 alertBanner
                 statsRow1
                 statsRow2
+                checkInSection
                 inventoryAlertsSection
                 quickAccessSection
                 checklistStatusSection
@@ -21,8 +22,69 @@ struct StatusView: View {
         .background(Theme.bg.ignoresSafeArea())
         .navigationTitle("GRIDDOWN")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink(value: NavRoute.settings) {
+                    Image(systemName: "gearshape")
+                        .foregroundStyle(Theme.textSecondary)
+                }
+            }
+        }
         .sheet(item: $editingSupply) { item in
             AddSupplyView(existing: item)
+        }
+    }
+
+    private var overdueCheckInCount: Int {
+        store.members.filter { member in
+            let state = CheckIn.state(for: member, intervalHours: store.checkInIntervalHours)
+            return state == .overdue || state == .never
+        }.count
+    }
+
+    @ViewBuilder
+    private var checkInSection: some View {
+        if !store.members.isEmpty {
+            VStack(alignment: .leading, spacing: 0) {
+                SectionLabel(text: "CHECK-IN STATUS · EVERY \(store.checkInIntervalHours)H")
+                VStack(spacing: 0) {
+                    ForEach(store.members) { member in
+                        let state = CheckIn.state(for: member, intervalHours: store.checkInIntervalHours)
+                        NavigationLink(value: NavRoute.memberDetail(member.id)) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "clock")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(state.color)
+                                Text(member.name)
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(Theme.textPrimary)
+                                    .lineLimit(1)
+                                Spacer()
+                                Text(member.lastCheckInAt != nil ? CheckIn.timeSince(member.lastCheckInAt) : "never")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(Theme.textMuted)
+                                Text(CheckIn.overdueBy(member, intervalHours: store.checkInIntervalHours) ?? state.label)
+                                    .font(.system(size: 8, weight: .heavy))
+                                    .tracking(0.8)
+                                    .foregroundStyle(state.color)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(state.color.opacity(0.15))
+                                    .clipShape(.rect(cornerRadius: 4))
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                        }
+                        .buttonStyle(.plain)
+                        if member.id != store.members.last?.id {
+                            Divider().overlay(Theme.border)
+                        }
+                    }
+                }
+                .background(Theme.bgCard)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+                .clipShape(.rect(cornerRadius: 12))
+            }
         }
     }
 
@@ -157,7 +219,7 @@ struct StatusView: View {
     private var statsRow1: some View {
         HStack(spacing: 10) {
             NavigationLink(value: NavRoute.group) {
-                StatCard(icon: "person.2.fill", iconColor: Theme.oliveLight, label: "PERSONNEL", value: "\(store.members.filter { $0.status == .ready }.count)/\(store.members.count)", sublabel: "Ready")
+                StatCard(icon: "person.2.fill", iconColor: Theme.oliveLight, label: "PERSONNEL", value: "\(store.members.filter { $0.status == .ready }.count)/\(store.members.count)", sublabel: overdueCheckInCount > 0 ? "\(overdueCheckInCount) overdue" : "Ready", alert: overdueCheckInCount > 0)
             }
             .buttonStyle(.plain)
             NavigationLink(value: NavRoute.supplies) {

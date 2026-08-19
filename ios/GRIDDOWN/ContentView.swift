@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var appStore = AppStore()
+    @State private var downloadManager = KiwixDownloadManager()
 
     var body: some View {
         TabView {
@@ -62,6 +63,7 @@ struct ContentView: View {
         }
         .tint(Theme.orange)
         .environment(appStore)
+        .environment(downloadManager)
         .preferredColorScheme(.dark)
     }
 
@@ -96,6 +98,8 @@ struct ContentView: View {
             if let res = (appStore.kiwixLibrary.first(where: { $0.id == id }) ?? MockData.kiwixCatalog.first(where: { $0.id == id })) {
                 ResourceDetailView(resource: res)
             }
+        case .settings:
+            SettingsView()
         }
     }
 }
@@ -111,4 +115,5 @@ enum NavRoute: Hashable {
     case guideDetail(String)
     case memberDetail(String)
     case resourceDetail(String)
+    case settings
 }

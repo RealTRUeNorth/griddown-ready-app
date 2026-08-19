@@ -275,6 +275,15 @@ struct GroupView: View {
                 Text(member.role)
                     .font(.system(size: 12))
                     .foregroundStyle(Theme.textSecondary)
+                let ciState = CheckIn.state(for: member, intervalHours: store.checkInIntervalHours)
+                HStack(spacing: 4) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 11))
+                    Text(member.lastCheckInAt != nil ? "Checked in \(CheckIn.timeSince(member.lastCheckInAt))" : "No check-in recorded")
+                        .font(.system(size: 10, weight: .semibold))
+                }
+                .foregroundStyle(ciState.color)
+                .padding(.top, 3)
                 if !member.skills.isEmpty {
                     HStack(spacing: 6) {
                         ForEach(member.skills.prefix(3), id: \.self) { skill in
@@ -305,6 +314,7 @@ struct GroupView: View {
 
 struct LibraryView: View {
     @Environment(AppStore.self) var store
+    @Environment(KiwixDownloadManager.self) var downloads
     @State private var searchQuery: String = ""
     @State private var selectedCategory: KiwixCategory? = nil
     @State private var viewMode: LibraryMode = .catalog
@@ -341,6 +351,21 @@ struct LibraryView: View {
                 modeToggle
                 searchField
                 categoryChips
+                if downloads.totalDownloadedBytes > 0 {
+                    HStack(spacing: 8) {
+                        Image(systemName: "internaldrive.fill")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Theme.statusGreen)
+                        Text("\(KiwixDownloadManager.formatBytes(downloads.totalDownloadedBytes)) of offline reference data on this device")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(12)
+                    .background(Theme.bgCard)
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 1))
+                    .clipShape(.rect(cornerRadius: 10))
+                }
                 ForEach(displayItems) { resource in
                     NavigationLink(value: NavRoute.resourceDetail(resource.id)) {
                         resourceCard(resource)
@@ -414,6 +439,7 @@ struct LibraryView: View {
 
     private func resourceCard(_ r: KiwixResource) -> some View {
         let isSaved = savedIds.contains(r.id)
+        let isDownloaded = downloads.records[r.id] != nil
         return VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
                 Image(systemName: r.category.iconName)
@@ -423,10 +449,22 @@ struct LibraryView: View {
                     .background(r.category.color.opacity(0.15))
                     .clipShape(.rect(cornerRadius: 12))
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(r.title)
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(Theme.textPrimary)
-                        .lineLimit(2)
+                    HStack(spacing: 6) {
+                        Text(r.title)
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(Theme.textPrimary)
+                            .lineLimit(2)
+                        if isDownloaded {
+                            Text("ON DEVICE")
+                                .font(.system(size: 8, weight: .heavy))
+                                .tracking(0.8)
+                                .foregroundStyle(Theme.statusGreen)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(Theme.statusGreen.opacity(0.15))
+                                .clipShape(.rect(cornerRadius: 4))
+                        }
+                    }
                     Text(r.description)
                         .font(.system(size: 12))
                         .foregroundStyle(Theme.textSecondary)
@@ -509,6 +547,7 @@ struct LibraryView: View {
                     .buttonStyle(.plain)
                 }
             }
+            KiwixDownloadControl(resource: r)
         }
         .padding(14)
         .background(Theme.bgCard)

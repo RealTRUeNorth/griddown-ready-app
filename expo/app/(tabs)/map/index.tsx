@@ -39,6 +39,9 @@ import { useAppData } from '@/providers/AppProvider';
 import { POI_CATEGORY_CONFIG, MEMBER_STATUS_COLORS, DEFAULT_REGION } from '@/constants/mapHelpers';
 import { Coordinates, POI, Route, WeatherData } from '@/types';
 import WeatherSuggestionsBanner from '@/components/WeatherSuggestionsBanner';
+import { saveWeatherCache, loadWeatherCache, formatCachedAt } from '@/utils/weatherCache';
+import { openDirectionsTo } from '@/utils/navigation';
+import { CloudOff } from 'lucide-react-native';
 
 let MapView: any = null;
 let Marker: any = null;
@@ -83,34 +86,49 @@ export default function MapScreen() {
   const mapRef = useRef<any>(null);
   const drawerAnim = useRef(new Animated.Value(0)).current;
 
-  // Fetch weather for resource suggestions (only when location is available)
+  // Fetch weather for resource suggestions (falls back to cached data offline)
   const weatherQuery = useQuery({
     queryKey: ['mapWeather', userLocation],
-    queryFn: async (): Promise<WeatherData | null> => {
+    queryFn: async (): Promise<{ data: WeatherData; fromCache: boolean; cachedAt?: string } | null> => {
       if (!userLocation) return null;
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${userLocation.latitude}&longitude=${userLocation.longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,surface_pressure,is_day,uv_index,visibility&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Weather fetch failed');
-      const data = await res.json();
-      const c = data.current;
-      return {
-        temperature: c.temperature_2m,
-        feelsLike: c.apparent_temperature,
-        humidity: c.relative_humidity_2m,
-        windSpeed: c.wind_speed_10m,
-        windDirection: c.wind_direction_10m,
-        weatherCode: c.weather_code,
-        precipitation: c.precipitation,
-        pressure: c.surface_pressure,
-        visibility: c.visibility ?? 10,
-        uvIndex: c.uv_index ?? 0,
-        isDay: c.is_day === 1,
-        updatedAt: new Date().toISOString(),
-      };
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Weather fetch failed');
+        const data = await res.json();
+        const c = data.current;
+        const parsed: WeatherData = {
+          temperature: c.temperature_2m,
+          feelsLike: c.apparent_temperature,
+          humidity: c.relative_humidity_2m,
+          windSpeed: c.wind_speed_10m,
+          windDirection: c.wind_direction_10m,
+          weatherCode: c.weather_code,
+          precipitation: c.precipitation,
+          pressure: c.surface_pressure,
+          visibility: c.visibility ?? 10,
+          uvIndex: c.uv_index ?? 0,
+          isDay: c.is_day === 1,
+          updatedAt: new Date().toISOString(),
+        };
+        await saveWeatherCache(parsed, userLocation);
+        return { data: parsed, fromCache: false };
+      } catch (e) {
+        const cached = await loadWeatherCache();
+        if (cached) {
+          console.log('Using cached weather from', cached.savedAt);
+          return { data: cached.data, fromCache: true, cachedAt: cached.savedAt };
+        }
+        throw e;
+      }
     },
     enabled: !!userLocation,
     staleTime: 10 * 60 * 1000, // 10 min cache
   });
+
+  const weatherData = weatherQuery.data?.data ?? null;
+  const weatherFromCache = weatherQuery.data?.fromCache ?? false;
+  const weatherCachedAt = weatherQuery.data?.cachedAt;
 
   useEffect(() => {
     (async () => {
@@ -239,6 +257,40 @@ export default function MapScreen() {
     } as unknown as Href);
   }, []);
 
+  const handleNavigate = useCallback(async (poi: POI) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const ok = await openDirectionsTo(poi.coordinates, poi.name);
+    if (!ok) {
+      Alert.alert('Navigation Unavailable', 'Could not open the maps application.');
+    }
+  }, []);
+
+  const handleNavigateToRally = useCallback(async () => {
+    const rallyPoints = pois.filter((p) => p.category === 'rally_point');
+    if (rallyPoints.length === 0) {
+      Alert.alert('No Rally Points', 'Add a rally point POI first to use rally navigation.');
+      return;
+    }
+    let target = rallyPoints[0];
+    if (userLocation) {
+      let best = Number.POSITIVE_INFINITY;
+      for (const rp of rallyPoints) {
+        const dLat = rp.coordinates.latitude - userLocation.latitude;
+        const dLng = rp.coordinates.longitude - userLocation.longitude;
+        const dist = dLat * dLat + dLng * dLng;
+        if (dist < best) {
+          best = dist;
+          target = rp;
+        }
+      }
+    }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const ok = await openDirectionsTo(target.coordinates, target.name);
+    if (!ok) {
+      Alert.alert('Navigation Unavailable', 'Could not open the maps application.');
+    }
+  }, [pois, userLocation]);
+
   const handleDeletePoi = useCallback((poi: POI) => {
     Alert.alert(
       'Remove POI',
@@ -359,6 +411,13 @@ export default function MapScreen() {
                       <Text style={styles.webPoiName}>{poi.name}</Text>
                       <Text style={styles.webPoiCategory}>{config.label}</Text>
                     </View>
+                    <TouchableOpacity
+                      onPress={() => openDirectionsTo(poi.coordinates, poi.name)}
+                      style={{ marginRight: 12 }}
+                      testID={`navigate-poi-${poi.id}`}
+                    >
+                      <Navigation color={Colors.statusGreen} size={16} />
+                    </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() =>
                         router.push({ pathname: '/add-poi', params: { id: poi.id } } as unknown as Href)
@@ -600,13 +659,23 @@ export default function MapScreen() {
         </View>
       )}
 
-      {!isSearching && weatherQuery.data && userLocation && (
-        <View style={styles.weatherBanner}>
-          <WeatherSuggestionsBanner
-            weather={weatherQuery.data}
-            userLocation={userLocation}
-            onAddPoi={addPoi}
-          />
+      {!isSearching && ((weatherFromCache && weatherCachedAt) || (weatherData && userLocation)) && (
+        <View style={styles.weatherArea}>
+          {weatherFromCache && weatherCachedAt && (
+            <View style={styles.offlineChip}>
+              <CloudOff color={Colors.statusAmber} size={12} />
+              <Text style={styles.offlineChipText}>
+                OFFLINE — cached weather from {formatCachedAt(weatherCachedAt)}
+              </Text>
+            </View>
+          )}
+          {weatherData && userLocation && (
+            <WeatherSuggestionsBanner
+              weather={weatherData}
+              userLocation={userLocation}
+              onAddPoi={addPoi}
+            />
+          )}
         </View>
       )}
 
@@ -617,6 +686,15 @@ export default function MapScreen() {
           activeOpacity={0.8}
         >
           <Navigation color={Colors.white} size={20} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.fab, { backgroundColor: Colors.statusGreen }]}
+          onPress={handleNavigateToRally}
+          activeOpacity={0.8}
+          testID="navigate-rally-btn"
+        >
+          <Flag color={Colors.white} size={20} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -745,6 +823,20 @@ export default function MapScreen() {
           <Text style={styles.infoCardCoords}>
             {selectedPoi.coordinates.latitude.toFixed(5)}, {selectedPoi.coordinates.longitude.toFixed(5)}
           </Text>
+          <TouchableOpacity
+            style={[
+              styles.navigateBtn,
+              selectedPoi.category === 'rally_point' && styles.navigateBtnRally,
+            ]}
+            onPress={() => handleNavigate(selectedPoi)}
+            activeOpacity={0.7}
+            testID="navigate-poi-btn"
+          >
+            <Navigation color={Colors.white} size={14} />
+            <Text style={styles.navigateBtnText}>
+              {selectedPoi.category === 'rally_point' ? 'Navigate to Rally Point' : 'Navigate'}
+            </Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -778,6 +870,22 @@ export default function MapScreen() {
           {selectedRoute.notes ? (
             <Text style={styles.infoCardNotes}>{selectedRoute.notes}</Text>
           ) : null}
+          {selectedRoute.waypoints.length > 0 && (
+            <TouchableOpacity
+              style={styles.navigateBtn}
+              onPress={() => {
+                const start = selectedRoute.waypoints[0];
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                openDirectionsTo(start, `${selectedRoute.name} start`).then((ok) => {
+                  if (!ok) Alert.alert('Navigation Unavailable', 'Could not open the maps application.');
+                });
+              }}
+              activeOpacity={0.7}
+            >
+              <Navigation color={Colors.white} size={14} />
+              <Text style={styles.navigateBtnText}>Navigate to Route Start</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </View>
@@ -830,11 +938,47 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600' as const,
   },
-  weatherBanner: {
+  weatherArea: {
     position: 'absolute',
     top: 104,
     left: 12,
     right: 12,
+    gap: 6,
+  },
+  offlineChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(26, 29, 26, 0.95)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: Colors.statusAmber,
+  },
+  offlineChipText: {
+    color: Colors.statusAmber,
+    fontSize: 10,
+    fontWeight: '700' as const,
+    letterSpacing: 0.5,
+  },
+  navigateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: Colors.olive,
+    borderRadius: 8,
+    paddingVertical: 9,
+    marginTop: 10,
+  },
+  navigateBtnRally: {
+    backgroundColor: Colors.statusGreen,
+  },
+  navigateBtnText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontWeight: '700' as const,
   },
   searchContainer: {
     position: 'absolute',

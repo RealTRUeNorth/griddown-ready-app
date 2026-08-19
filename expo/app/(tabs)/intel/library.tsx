@@ -35,6 +35,8 @@ import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
 import { kiwixCatalog, kiwixCategories } from '@/mocks/kiwix';
 import { KiwixResource } from '@/types';
+import KiwixDownloadControl from '@/components/KiwixDownloadControl';
+import { useDownloads, formatBytes } from '@/providers/DownloadProvider';
 
 const categoryIconMap: Record<string, (color: string, size: number) => React.ReactNode> = {
   medical: (c, s) => <Stethoscope color={c} size={s} />,
@@ -74,6 +76,7 @@ export default function LibraryScreen() {
   const [viewMode, setViewMode] = useState<'catalog' | 'saved'>('catalog');
   const [showImportField, setShowImportField] = useState<boolean>(false);
   const [importText, setImportText] = useState<string>('');
+  const { downloads, totalDownloadedBytes } = useDownloads();
 
   const savedIds = useMemo(() => new Set(kiwixLibrary.map((r) => r.id)), [kiwixLibrary]);
 
@@ -174,9 +177,12 @@ export default function LibraryScreen() {
       const catColor = categoryColorMap[resource.category] ?? Colors.textMuted;
       const renderIcon = categoryIconMap[resource.category];
 
+      const download = downloads[resource.id];
+      const isDownloaded = download?.status === 'completed';
+
       return (
+        <View key={resource.id} style={styles.resourceCardColumn}>
         <TouchableOpacity
-          key={resource.id}
           style={styles.resourceCard}
           onPress={() =>
             router.push({
@@ -201,7 +207,14 @@ export default function LibraryScreen() {
                 <Text style={styles.sizeText}>{resource.sizeLabel}</Text>
               </View>
             </View>
-            <Text style={styles.resourceTitle} numberOfLines={1}>{resource.title}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.resourceTitle} numberOfLines={1}>{resource.title}</Text>
+              {isDownloaded && (
+                <View style={styles.onDeviceChip}>
+                  <Text style={styles.onDeviceChipText}>ON DEVICE</Text>
+                </View>
+              )}
+            </View>
             <Text style={styles.resourceDesc} numberOfLines={2}>{resource.description}</Text>
             <View style={styles.tagRow}>
               {resource.tags.slice(0, 3).map((tag) => (
@@ -239,9 +252,13 @@ export default function LibraryScreen() {
             <ChevronRight color={Colors.textMuted} size={16} />
           </View>
         </TouchableOpacity>
+        <View style={styles.downloadRow}>
+          <KiwixDownloadControl resource={resource} />
+        </View>
+        </View>
       );
     },
-    [savedIds, viewMode, handleSave, handleRemove]
+    [savedIds, viewMode, handleSave, handleRemove, downloads]
   );
 
   return (
@@ -360,6 +377,15 @@ export default function LibraryScreen() {
                 <Text style={styles.importConfirmText}>Import</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        )}
+
+        {totalDownloadedBytes > 0 && (
+          <View style={styles.storageFooter}>
+            <HardDrive color={Colors.statusGreen} size={14} />
+            <Text style={styles.storageFooterText}>
+              {formatBytes(totalDownloadedBytes)} of offline reference data on this device
+            </Text>
           </View>
         )}
 
@@ -556,15 +582,52 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase' as const,
     marginBottom: 10,
   },
-  resourceCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  resourceCardColumn: {
     backgroundColor: Colors.bgCard,
     borderRadius: 12,
-    padding: 14,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: Colors.border,
+    overflow: 'hidden',
+  },
+  resourceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+  },
+  downloadRow: {
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    paddingTop: 2,
+  },
+  onDeviceChip: {
+    backgroundColor: Colors.statusGreen + '22',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  onDeviceChipText: {
+    color: Colors.statusGreen,
+    fontSize: 8,
+    fontWeight: '800' as const,
+    letterSpacing: 0.8,
+  },
+  storageFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.bgCard,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  storageFooterText: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '600' as const,
   },
   resourceIconWrap: {
     width: 48,

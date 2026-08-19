@@ -15,6 +15,7 @@ enum Theme {
     static let orangeMuted = Color(hex: 0x8B5A1A)
     static let red = Color(hex: 0xCC3333)
     static let redLight = Color(hex: 0xE85555)
+    static let redMuted = Color(hex: 0x662222)
     static let amber = Color(hex: 0xD4A22A)
     static let amberLight = Color(hex: 0xE8C04A)
     static let green = Color(hex: 0x4A8B4A)

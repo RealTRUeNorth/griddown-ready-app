@@ -27,10 +27,12 @@ import { parseOpsBackup, serializeOpsBackup } from '@/utils/opsBackup';
 const STORAGE_KEY = 'griddown_app_data';
 const DATA_VERSION_KEY = 'griddown_data_version';
 const CURRENT_DATA_VERSION = 3; // Bumped when seed supplies added
+const DEFAULT_CHECK_IN_HOURS = 6;
 
 const defaultAppData: AppData = {
   alertLevel: 'green',
   groupName: 'My Group',
+  checkInIntervalHours: DEFAULT_CHECK_IN_HOURS,
   members: defaultMembers,
   supplies: seedSupplies,
   checklists: defaultChecklists,
@@ -45,6 +47,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
   const queryClient = useQueryClient();
   const [alertLevel, setAlertLevel] = useState<AlertLevel>('green');
   const [groupName, setGroupName] = useState<string>('My Group');
+  const [checkInIntervalHours, setCheckInIntervalHours] = useState<number>(DEFAULT_CHECK_IN_HOURS);
   const [members, setMembers] = useState<GroupMember[]>(defaultMembers);
   const [supplies, setSupplies] = useState<SupplyItem[]>(seedSupplies);
   const [checklists, setChecklists] = useState<Checklist[]>(defaultChecklists);
@@ -97,6 +100,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
     if (dataQuery.data) {
       setAlertLevel(dataQuery.data.alertLevel);
       setGroupName(dataQuery.data.groupName);
+      setCheckInIntervalHours(dataQuery.data.checkInIntervalHours ?? DEFAULT_CHECK_IN_HOURS);
       setMembers(dataQuery.data.members);
       setSupplies(dataQuery.data.supplies);
       setChecklists(dataQuery.data.checklists);
@@ -123,6 +127,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
       const data: AppData = {
         alertLevel,
         groupName,
+        checkInIntervalHours,
         members,
         supplies,
         checklists,
@@ -135,7 +140,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
       };
       saveMutation.mutate(data);
     },
-    [alertLevel, groupName, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary, saveMutation]
+    [alertLevel, groupName, checkInIntervalHours, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary, saveMutation]
   );
 
   const updateAlertLevel = useCallback(
@@ -152,6 +157,24 @@ export const [AppProvider, useAppData] = createContextHook(() => {
       persistData({ groupName: name });
     },
     [persistData]
+  );
+
+  const updateCheckInInterval = useCallback(
+    (hours: number) => {
+      setCheckInIntervalHours(hours);
+      persistData({ checkInIntervalHours: hours });
+    },
+    [persistData]
+  );
+
+  const checkInMember = useCallback(
+    (id: string) => {
+      const now = new Date().toISOString();
+      const updated = members.map((m) => (m.id === id ? { ...m, lastCheckInAt: now } : m));
+      setMembers(updated);
+      persistData({ members: updated });
+    },
+    [members, persistData]
   );
 
   const addMember = useCallback(
@@ -445,6 +468,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
   const currentSnapshot = useCallback((): AppData => ({
     alertLevel,
     groupName,
+    checkInIntervalHours,
     members,
     supplies,
     checklists,
@@ -453,7 +477,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
     commsChannels,
     commsRepeaters,
     kiwixLibrary,
-  }), [alertLevel, groupName, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary]);
+  }), [alertLevel, groupName, checkInIntervalHours, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary]);
 
   const exportOpsBackup = useCallback(() => {
     return serializeOpsBackup(currentSnapshot());
@@ -463,6 +487,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
     (incoming: AppData) => {
       setAlertLevel(incoming.alertLevel);
       setGroupName(incoming.groupName);
+      setCheckInIntervalHours(incoming.checkInIntervalHours ?? DEFAULT_CHECK_IN_HOURS);
       setMembers(incoming.members);
       setSupplies(incoming.supplies);
       setChecklists(incoming.checklists);
@@ -514,6 +539,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
   return {
     alertLevel,
     groupName,
+    checkInIntervalHours,
     members,
     supplies,
     checklists,
@@ -522,6 +548,8 @@ export const [AppProvider, useAppData] = createContextHook(() => {
     isLoading: dataQuery.isLoading,
     updateAlertLevel,
     updateGroupName,
+    updateCheckInInterval,
+    checkInMember,
     addMember,
     updateMember,
     removeMember,

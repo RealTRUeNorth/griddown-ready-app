@@ -19,12 +19,20 @@ import {
   ChevronRight,
   Radio,
   Zap,
+  Clock,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
 import { AlertLevel, SupplyItem } from '@/types';
 import { getInventoryAlerts } from '@/utils/supplyAlerts';
+import {
+  getCheckInState,
+  checkInStatusLabel,
+  checkInStatusColor,
+  formatTimeSince,
+  overdueBy,
+} from '@/utils/checkin';
 
 const alertConfig: Record<AlertLevel, { label: string; color: string; bgColor: string; description: string }> = {
   green: {
@@ -58,6 +66,7 @@ export default function DashboardScreen() {
     checklists,
     supplyStats,
     checklistStats,
+    checkInIntervalHours,
   } = useAppData();
 
   const currentAlert = alertConfig[alertLevel];
@@ -76,6 +85,18 @@ export default function DashboardScreen() {
     summary.expiringSoon.forEach((i) => push(i, 'EXPIRES SOON', Colors.statusAmber));
     return [...map.values()];
   }, [supplies]);
+  const checkInRows = useMemo(() => {
+    return members.map((m) => {
+      const state = getCheckInState(m, checkInIntervalHours);
+      return { member: m, state, overdue: overdueBy(m, checkInIntervalHours) };
+    });
+  }, [members, checkInIntervalHours]);
+
+  const overdueCount = useMemo(
+    () => checkInRows.filter((r) => r.state === 'overdue' || r.state === 'never').length,
+    [checkInRows]
+  );
+
   const totalChecked = checklistStats.reduce((sum, s) => sum + s.completed, 0);
   const totalItems = checklistStats.reduce((sum, s) => sum + s.total, 0);
   const overallPercent = totalItems > 0 ? Math.round((totalChecked / totalItems) * 100) : 0;
@@ -135,7 +156,8 @@ export default function DashboardScreen() {
           icon={<Users color={Colors.oliveLight} size={20} />}
           label="PERSONNEL"
           value={`${readyMembers}/${members.length}`}
-          sublabel="Ready"
+          sublabel={overdueCount > 0 ? `${overdueCount} overdue` : 'Ready'}
+          alert={overdueCount > 0}
           onPress={() => router.push('/(tabs)/intel/group' as Href)}
         />
         <StatCard
@@ -194,6 +216,40 @@ export default function DashboardScreen() {
               </View>
             </TouchableOpacity>
           ))}
+        </>
+      )}
+
+      {members.length > 0 && (
+        <>
+          <Text style={styles.sectionTitle}>CHECK-IN STATUS · EVERY {checkInIntervalHours}H</Text>
+          <View style={styles.checkInPanel}>
+            {checkInRows.map(({ member, state, overdue }) => (
+              <TouchableOpacity
+                key={member.id}
+                style={styles.checkInRow}
+                onPress={() =>
+                  router.push({ pathname: '/member-detail', params: { id: member.id } } as unknown as Href)
+                }
+                activeOpacity={0.7}
+              >
+                <Clock color={checkInStatusColor(state)} size={14} />
+                <Text style={styles.checkInName} numberOfLines={1}>{member.name}</Text>
+                <Text style={styles.checkInSince}>
+                  {member.lastCheckInAt ? formatTimeSince(member.lastCheckInAt) : 'never'}
+                </Text>
+                <View
+                  style={[
+                    styles.checkInBadge,
+                    { backgroundColor: checkInStatusColor(state) + '22' },
+                  ]}
+                >
+                  <Text style={[styles.checkInBadgeText, { color: checkInStatusColor(state) }]}>
+                    {overdue ?? checkInStatusLabel(state)}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
         </>
       )}
 
@@ -482,6 +538,42 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600' as const,
     textAlign: 'center',
+  },
+  checkInPanel: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  checkInRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  checkInName: {
+    color: Colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '600' as const,
+    flex: 1,
+  },
+  checkInSince: {
+    color: Colors.textMuted,
+    fontSize: 11,
+  },
+  checkInBadge: {
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  checkInBadgeText: {
+    fontSize: 8,
+    fontWeight: '800' as const,
+    letterSpacing: 0.8,
   },
   invAlertRow: {
     flexDirection: 'row',

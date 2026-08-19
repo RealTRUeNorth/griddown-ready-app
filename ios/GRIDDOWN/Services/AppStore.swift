@@ -5,6 +5,7 @@ import Observation
 final class AppStore {
     var alertLevel: AlertLevel = .green
     var groupName: String = "My Group"
+    var checkInIntervalHours: Int = 6
     var members: [GroupMember] = MockData.members
     var supplies: [SupplyItem] = MockData.seedSupplies
     var checklists: [Checklist] = MockData.checklists
@@ -27,6 +28,7 @@ final class AppStore {
               let decoded = try? JSONDecoder().decode(AppData.self, from: data) else { return }
         alertLevel = decoded.alertLevel
         groupName = decoded.groupName
+        checkInIntervalHours = decoded.checkInIntervalHours
         members = decoded.members
         supplies = decoded.supplies
         checklists = decoded.checklists.isEmpty ? MockData.checklists : decoded.checklists
@@ -60,7 +62,8 @@ final class AppStore {
 
     private func persist() {
         let data = AppData(
-            alertLevel: alertLevel, groupName: groupName, members: members,
+            alertLevel: alertLevel, groupName: groupName, checkInIntervalHours: checkInIntervalHours,
+            members: members,
             supplies: supplies, checklists: checklists, pois: pois, routes: routes,
             commsChannels: commsChannels, commsRepeaters: commsRepeaters,
             kiwixLibrary: kiwixLibrary
@@ -96,6 +99,22 @@ final class AppStore {
 
     func updateAlertLevel(_ level: AlertLevel) {
         alertLevel = level
+        persist()
+    }
+
+    func updateGroupName(_ name: String) {
+        groupName = name
+        persist()
+    }
+
+    func updateCheckInInterval(_ hours: Int) {
+        checkInIntervalHours = hours
+        persist()
+    }
+
+    func checkInMember(_ id: String) {
+        guard let idx = members.firstIndex(where: { $0.id == id }) else { return }
+        members[idx].lastCheckInAt = ISO8601DateFormatter().string(from: Date())
         persist()
     }
 
@@ -170,7 +189,8 @@ final class AppStore {
             version: Self.opsBackupVersion,
             exportedAt: ISO8601DateFormatter().string(from: Date()),
             data: AppData(
-                alertLevel: alertLevel, groupName: groupName, members: members,
+                alertLevel: alertLevel, groupName: groupName, checkInIntervalHours: checkInIntervalHours,
+                members: members,
                 supplies: supplies, checklists: checklists, pois: pois, routes: routes,
                 commsChannels: commsChannels, commsRepeaters: commsRepeaters,
                 kiwixLibrary: kiwixLibrary
@@ -200,6 +220,7 @@ final class AppStore {
         alertLevel = payload.alertLevel ?? .green
         let trimmedName = payload.groupName?.trimmingCharacters(in: .whitespaces) ?? ""
         groupName = trimmedName.isEmpty ? "My Group" : trimmedName
+        checkInIntervalHours = payload.checkInIntervalHours ?? 6
         members = payload.members ?? []
         supplies = payload.supplies ?? []
         checklists = payload.checklists ?? []

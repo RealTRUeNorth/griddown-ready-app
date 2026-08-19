@@ -190,6 +190,56 @@ struct MemberDetailView: View {
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 1))
                 .clipShape(.rect(cornerRadius: 14))
 
+                VStack(alignment: .leading, spacing: 8) {
+                    SectionLabel(text: "CHECK-IN")
+                    let ciState = CheckIn.state(for: member, intervalHours: store.checkInIntervalHours)
+                    VStack(spacing: 12) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "clock.fill")
+                                .font(.system(size: 16))
+                                .foregroundStyle(Theme.textSecondary)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(member.lastCheckInAt != nil ? "Last check-in \(CheckIn.timeSince(member.lastCheckInAt))" : "No check-in recorded")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(Theme.textPrimary)
+                                Text("Expected every \(store.checkInIntervalHours)h")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(Theme.textMuted)
+                            }
+                            Spacer()
+                            Text(ciState.label)
+                                .font(.system(size: 9, weight: .heavy))
+                                .tracking(0.8)
+                                .foregroundStyle(ciState.color)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(ciState.color.opacity(0.15))
+                                .clipShape(.rect(cornerRadius: 6))
+                        }
+                        Button {
+                            UINotificationFeedbackGenerator().notificationOccurred(.success)
+                            store.checkInMember(member.id)
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 16, weight: .semibold))
+                                Text("Check In Now")
+                                    .font(.system(size: 14, weight: .bold))
+                            }
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Theme.olive)
+                            .clipShape(.rect(cornerRadius: 8))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(14)
+                    .background(Theme.bgCard)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+                    .clipShape(.rect(cornerRadius: 12))
+                }
+
                 if !member.skills.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         SectionLabel(text: "SKILLS")
@@ -361,6 +411,7 @@ struct FlowLayout: Layout {
 struct ResourceDetailView: View {
     let resource: KiwixResource
     @Environment(AppStore.self) var store
+    @Environment(KiwixDownloadManager.self) var downloads
 
     var isSaved: Bool {
         store.kiwixLibrary.contains { $0.id == resource.id }
@@ -395,6 +446,32 @@ struct ResourceDetailView: View {
                     detailRow("Language", resource.language)
                     detailRow("Updated", resource.lastUpdated)
                     detailRow("Category", resource.category.label)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    SectionLabel(text: "OFFLINE DOWNLOAD")
+                    KiwixDownloadControl(resource: resource)
+                        .padding(14)
+                        .background(Theme.bgCard)
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+                        .clipShape(.rect(cornerRadius: 12))
+                }
+
+                if let infoUrl = resource.infoUrl, let url = URL(string: infoUrl) {
+                    Link(destination: url) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "safari")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text("View Online Reader")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        .foregroundStyle(Theme.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Theme.bgCard)
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+                        .clipShape(.rect(cornerRadius: 12))
+                    }
                 }
 
                 if !resource.tags.isEmpty {

@@ -10,6 +10,8 @@ struct WeatherView: View {
     @State private var isLoading: Bool = true
     @State private var hasError: Bool = false
     @State private var lastUpdated: String = ""
+    @State private var isShowingCached: Bool = false
+    @State private var cachedSavedAt: Date?
 
     private let locationManager = LocationManager()
 
@@ -18,6 +20,24 @@ struct WeatherView: View {
             VStack(alignment: .leading, spacing: 12) {
                 if !locationError.isEmpty {
                     locationWarning(locationError)
+                }
+
+                if isShowingCached, let saved = cachedSavedAt {
+                    HStack(spacing: 6) {
+                        Image(systemName: "icloud.slash.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Theme.statusAmber)
+                        Text("OFFLINE — CACHED DATA FROM \(WeatherCache.formatSavedAt(saved).uppercased())")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Theme.statusAmber)
+                    }
+                    .padding(10)
+                    .background(Theme.statusAmber.opacity(0.12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Theme.statusAmber.opacity(0.3), lineWidth: 1)
+                    )
+                    .clipShape(.rect(cornerRadius: 8))
                 }
 
                 if let current {
@@ -403,6 +423,7 @@ struct WeatherView: View {
         guard let location else { return }
         isLoading = true
         hasError = false
+        isShowingCached = false
         let url = URL(string: "https://api.open-meteo.com/v1/forecast?latitude=\(location.latitude)&longitude=\(location.longitude)&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,surface_pressure,is_day&hourly=temperature_2m,weather_code,precipitation,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,sunrise,sunset&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=7")!
 
         do {
@@ -412,9 +433,25 @@ struct WeatherView: View {
             let f = DateFormatter()
             f.dateFormat = "h:mma"
             lastUpdated = f.string(from: Date()).lowercased()
+            if let current {
+                WeatherCache.saveFull(CachedWeatherSnapshot(
+                    current: current, hourly: hourly, daily: daily,
+                    savedAt: Date(), latitude: location.latitude, longitude: location.longitude
+                ))
+            }
             isLoading = false
         } catch {
-            hasError = true
+            // Offline — fall back to the last cached snapshot if we have one
+            if let snapshot = WeatherCache.load() {
+                current = snapshot.current
+                hourly = snapshot.hourly
+                daily = snapshot.daily
+                isShowingCached = true
+                cachedSavedAt = snapshot.savedAt
+                lastUpdated = WeatherCache.formatSavedAt(snapshot.savedAt)
+            } else {
+                hasError = true
+            }
             isLoading = false
         }
     }

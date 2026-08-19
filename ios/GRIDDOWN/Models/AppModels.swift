@@ -72,6 +72,7 @@ struct GroupMember: Identifiable, Codable, Hashable, Sendable {
     var notes: String?
     var location: Coordinates?
     var locationUpdatedAt: String?
+    var lastCheckInAt: String?
 }
 
 enum SupplyCategory: String, Codable, CaseIterable {
@@ -406,6 +407,8 @@ struct KiwixResource: Identifiable, Codable, Hashable, Sendable {
     var tags: [String]
     var status: KiwixStatus
     var savedAt: String?
+    var sizeBytes: Int64?
+    var infoUrl: String?
 }
 
 struct WeatherData: Codable, Sendable {
@@ -445,6 +448,7 @@ struct WeatherForecastDay: Identifiable, Codable, Sendable {
 struct AppData: Codable, Sendable {
     var alertLevel: AlertLevel = .green
     var groupName: String = "My Group"
+    var checkInIntervalHours: Int = 6
     var members: [GroupMember] = []
     var supplies: [SupplyItem] = []
     var checklists: [Checklist] = []
@@ -453,6 +457,25 @@ struct AppData: Codable, Sendable {
     var commsChannels: [CommsChannel] = []
     var commsRepeaters: [CommsRepeater] = []
     var kiwixLibrary: [KiwixResource] = []
+}
+
+extension AppData {
+    /// Custom decoder so older saves (missing newer keys like checkInIntervalHours)
+    /// still load instead of failing decode and wiping user data.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        alertLevel = try container.decodeIfPresent(AlertLevel.self, forKey: .alertLevel) ?? .green
+        groupName = try container.decodeIfPresent(String.self, forKey: .groupName) ?? "My Group"
+        checkInIntervalHours = try container.decodeIfPresent(Int.self, forKey: .checkInIntervalHours) ?? 6
+        members = try container.decodeIfPresent([GroupMember].self, forKey: .members) ?? []
+        supplies = try container.decodeIfPresent([SupplyItem].self, forKey: .supplies) ?? []
+        checklists = try container.decodeIfPresent([Checklist].self, forKey: .checklists) ?? []
+        pois = try container.decodeIfPresent([POI].self, forKey: .pois) ?? []
+        routes = try container.decodeIfPresent([Route].self, forKey: .routes) ?? []
+        commsChannels = try container.decodeIfPresent([CommsChannel].self, forKey: .commsChannels) ?? []
+        commsRepeaters = try container.decodeIfPresent([CommsRepeater].self, forKey: .commsRepeaters) ?? []
+        kiwixLibrary = try container.decodeIfPresent([KiwixResource].self, forKey: .kiwixLibrary) ?? []
+    }
 }
 
 /// Wrapper written when exporting an ops backup (matches the Expo app's format).
@@ -476,6 +499,7 @@ struct OpsBackupWrapper: Codable, Sendable {
 struct OpsBackupData: Codable, Sendable {
     var alertLevel: AlertLevel?
     var groupName: String?
+    var checkInIntervalHours: Int?
     var members: [GroupMember]?
     var supplies: [SupplyItem]?
     var checklists: [Checklist]?

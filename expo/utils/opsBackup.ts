@@ -52,6 +52,9 @@ export function parseOpsBackup(raw: string): AppData | null {
       groupName: typeof source.groupName === 'string' && source.groupName.trim()
         ? source.groupName
         : 'My Group',
+      checkInIntervalHours: typeof source.checkInIntervalHours === 'number' && source.checkInIntervalHours > 0
+        ? source.checkInIntervalHours
+        : 6,
       members: asArray(source.members),
       supplies: asArray(source.supplies),
       checklists: asArray(source.checklists),

@@ -8,10 +8,16 @@ import {
   Alert,
 } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
-import { User, Phone, FileText, Trash2, Shield, Pencil } from 'lucide-react-native';
+import { User, Phone, FileText, Trash2, Shield, Pencil, Clock, CheckCircle2 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
+import {
+  getCheckInState,
+  checkInStatusLabel,
+  checkInStatusColor,
+  formatTimeSince,
+} from '@/utils/checkin';
 
 const statusColors: Record<string, string> = {
   ready: Colors.statusGreen,
@@ -27,7 +33,7 @@ const statusLabels: Record<string, string> = {
 
 export default function MemberDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { members, removeMember, updateMember } = useAppData();
+  const { members, removeMember, updateMember, checkInMember, checkInIntervalHours } = useAppData();
   const member = members.find((m) => m.id === id);
 
   const handleDelete = useCallback(() => {
@@ -45,6 +51,12 @@ export default function MemberDetailScreen() {
       },
     ]);
   }, [id, member, removeMember]);
+
+  const handleCheckIn = useCallback(() => {
+    if (!id) return;
+    checkInMember(id);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [id, checkInMember]);
 
   const cycleStatus = useCallback(() => {
     if (!member) return;
@@ -101,6 +113,52 @@ export default function MemberDetailScreen() {
             </View>
           </View>
         )}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>CHECK-IN</Text>
+          <View style={styles.checkInCard}>
+            <View style={styles.checkInRow}>
+              <Clock color={Colors.textSecondary} size={16} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.checkInTime}>
+                  {member.lastCheckInAt
+                    ? `Last check-in ${formatTimeSince(member.lastCheckInAt)}`
+                    : 'No check-in recorded'}
+                </Text>
+                <Text style={styles.checkInInterval}>
+                  Expected every {checkInIntervalHours}h
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.checkInBadge,
+                  {
+                    backgroundColor:
+                      checkInStatusColor(getCheckInState(member, checkInIntervalHours)) + '22',
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.checkInBadgeText,
+                    { color: checkInStatusColor(getCheckInState(member, checkInIntervalHours)) },
+                  ]}
+                >
+                  {checkInStatusLabel(getCheckInState(member, checkInIntervalHours))}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.checkInButton}
+              onPress={handleCheckIn}
+              activeOpacity={0.7}
+              testID="check-in-btn"
+            >
+              <CheckCircle2 color={Colors.white} size={18} />
+              <Text style={styles.checkInButtonText}>Check In Now</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
         {member.phone && (
           <View style={styles.section}>
@@ -241,6 +299,53 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     fontSize: 13,
     fontWeight: '600' as const,
+  },
+  checkInCard: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  checkInRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 10,
+    marginBottom: 12,
+  },
+  checkInTime: {
+    color: Colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '600' as const,
+  },
+  checkInInterval: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  checkInBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  checkInBadgeText: {
+    fontSize: 9,
+    fontWeight: '800' as const,
+    letterSpacing: 0.8,
+  },
+  checkInButton: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 8,
+    backgroundColor: Colors.olive,
+    borderRadius: 8,
+    paddingVertical: 12,
+  },
+  checkInButtonText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '700' as const,
   },
   infoCard: {
     flexDirection: 'row',

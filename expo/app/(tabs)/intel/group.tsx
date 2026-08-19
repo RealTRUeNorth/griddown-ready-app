@@ -9,12 +9,13 @@ import {
   Alert,
 } from 'react-native';
 import { router, Href } from 'expo-router';
-import { Plus, User, Users, ChevronRight, Search, X } from 'lucide-react-native';
+import { Plus, User, Users, ChevronRight, Search, X, Clock } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
 import { GroupMember } from '@/types';
 import SwipeableRow from '@/components/SwipeableRow';
+import { getCheckInState, checkInStatusColor, formatTimeSince } from '@/utils/checkin';
 
 const statusColors: Record<string, string> = {
   ready: Colors.statusGreen,
@@ -23,7 +24,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function GroupScreen() {
-  const { members, groupName, removeMember } = useAppData();
+  const { members, groupName, removeMember, checkInIntervalHours } = useAppData();
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const confirmDelete = useCallback((member: GroupMember) => {
@@ -101,6 +102,22 @@ export default function GroupScreen() {
                 />
               </View>
               <Text style={styles.memberRole}>{member.role}</Text>
+              <View style={styles.checkInRow}>
+                <Clock
+                  color={checkInStatusColor(getCheckInState(member, checkInIntervalHours))}
+                  size={11}
+                />
+                <Text
+                  style={[
+                    styles.checkInText,
+                    { color: checkInStatusColor(getCheckInState(member, checkInIntervalHours)) },
+                  ]}
+                >
+                  {member.lastCheckInAt
+                    ? `Checked in ${formatTimeSince(member.lastCheckInAt)}`
+                    : 'No check-in recorded'}
+                </Text>
+              </View>
               {member.skills.length > 0 && (
                 <View style={styles.skillsRow}>
                   {member.skills.slice(0, 3).map((skill) => (
@@ -230,6 +247,16 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: 12,
     marginTop: 2,
+  },
+  checkInRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+    marginTop: 4,
+  },
+  checkInText: {
+    fontSize: 10,
+    fontWeight: '600' as const,
   },
   skillsRow: {
     flexDirection: 'row',

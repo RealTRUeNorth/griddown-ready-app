@@ -1,0 +1,136 @@
+import SwiftUI
+
+struct SettingsView: View {
+    @Environment(AppStore.self) var store
+    @State private var nameDraft: String = ""
+
+    private var isNameDirty: Bool {
+        let trimmed = nameDraft.trimmingCharacters(in: .whitespaces)
+        return !trimmed.isEmpty && trimmed != store.groupName
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                SectionLabel(text: "GROUP")
+
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "person.2.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Theme.oliveLight)
+                        Text("Group Name")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    TextField("My Group", text: $nameDraft)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 11)
+                        .background(Theme.bg)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
+                        .clipShape(.rect(cornerRadius: 8))
+                        .onSubmit { saveName() }
+                    Button { saveName() } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark").font(.system(size: 13, weight: .bold))
+                            Text("Save Name").font(.system(size: 13, weight: .bold))
+                        }
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(isNameDirty ? Theme.olive : Theme.bgElevated)
+                        .clipShape(.rect(cornerRadius: 8))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!isNameDirty)
+                    Text("Shown at the top of the Group Roster and included in ops backups.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.textMuted)
+                }
+                .padding(16)
+                .background(Theme.bgCard)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+                .clipShape(.rect(cornerRadius: 12))
+
+                SectionLabel(text: "CHECK-IN CADENCE")
+
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "clock.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Theme.orangeLight)
+                        Text("Expected Check-In Interval")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    Text("Members are marked overdue if they haven't checked in within this window.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.textMuted)
+                    FlowLayout(spacing: 8) {
+                        ForEach(CheckIn.intervalOptions, id: \.self) { hours in
+                            let isActive = store.checkInIntervalHours == hours
+                            Button {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                store.updateCheckInInterval(hours)
+                            } label: {
+                                Text("\(hours)h")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundStyle(isActive ? .white : Theme.textSecondary)
+                                    .padding(.horizontal, 18)
+                                    .padding(.vertical, 10)
+                                    .background(isActive ? Theme.orange : Theme.bg)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(isActive ? Theme.orange : Theme.border, lineWidth: 1)
+                                    )
+                                    .clipShape(.rect(cornerRadius: 8))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .padding(16)
+                .background(Theme.bgCard)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+                .clipShape(.rect(cornerRadius: 12))
+
+                SectionLabel(text: "ABOUT")
+
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "internaldrive.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Theme.textSecondary)
+                        Text("Local Data")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    Text(store.opsCountsSummary)
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.textSecondary)
+                    Text("GRIDDOWN stores everything on this device. Export an ops backup from the Intel tab to share or safeguard your data.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.textMuted)
+                }
+                .padding(16)
+                .background(Theme.bgCard)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+                .clipShape(.rect(cornerRadius: 12))
+            }
+            .padding(16)
+            .padding(.bottom, 40)
+        }
+        .background(Theme.bg.ignoresSafeArea())
+        .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { nameDraft = store.groupName }
+    }
+
+    private func saveName() {
+        guard isNameDirty else { return }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        store.updateGroupName(nameDraft.trimmingCharacters(in: .whitespaces))
+    }
+}

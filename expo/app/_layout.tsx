@@ -4,6 +4,7 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider } from "@/providers/AppProvider";
+import { DownloadProvider } from "@/providers/DownloadProvider";
 import Colors from "@/constants/colors";
 
 SplashScreen.preventAutoHideAsync();
@@ -62,6 +63,10 @@ function RootLayoutNav() {
         name="resource-detail"
         options={{ title: "Resource" }}
       />
+      <Stack.Screen
+        name="settings"
+        options={{ title: "Settings" }}
+      />
     </Stack>
   );
 }
@@ -75,7 +80,9 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView>
         <AppProvider>
-          <RootLayoutNav />
+          <DownloadProvider>
+            <RootLayoutNav />
+          </DownloadProvider>
         </AppProvider>
       </GestureHandlerRootView>
     </QueryClientProvider>

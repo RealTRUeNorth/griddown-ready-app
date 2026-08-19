@@ -15,6 +15,7 @@ export interface GroupMember {
   notes?: string;
   location?: Coordinates;
   locationUpdatedAt?: string;
+  lastCheckInAt?: string;
 }
 
 export interface SupplyItem {
@@ -167,11 +168,14 @@ export interface KiwixResource {
   tags: string[];
   status: KiwixStatus;
   savedAt?: string;
+  sizeBytes?: number;
+  infoUrl?: string;
 }
 
 export interface AppData {
   alertLevel: AlertLevel;
   groupName: string;
+  checkInIntervalHours?: number;
   members: GroupMember[];
   supplies: SupplyItem[];
   checklists: Checklist[];

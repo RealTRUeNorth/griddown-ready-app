@@ -35,6 +35,7 @@ import * as Clipboard from 'expo-clipboard';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
 import { kiwixCatalog } from '@/mocks/kiwix';
+import KiwixDownloadControl from '@/components/KiwixDownloadControl';
 
 const categoryIconMap: Record<string, (color: string, size: number) => React.ReactNode> = {
   medical: (c, s) => <Stethoscope color={c} size={s} />,
@@ -74,19 +75,14 @@ export default function ResourceDetailScreen() {
     return kiwixLibrary.some((r) => r.id === id);
   }, [id, kiwixLibrary]);
 
-  const handleOpenKiwix = useCallback(async () => {
+  const handleViewOnline = useCallback(async () => {
     if (!resource) return;
+    const url = resource.infoUrl ?? resource.downloadUrl;
     try {
-      const supported = await Linking.canOpenURL(resource.downloadUrl);
-      if (supported) {
-        await Linking.openURL(resource.downloadUrl);
-      } else {
-        await Linking.openURL(resource.downloadUrl);
-      }
-      console.log('Opened Kiwix URL:', resource.downloadUrl);
+      await Linking.openURL(url);
     } catch (e) {
       console.log('Error opening URL:', e);
-      Alert.alert('Error', 'Could not open the download link.');
+      Alert.alert('Error', 'Could not open the online reader.');
     }
   }, [resource]);
 
@@ -205,13 +201,17 @@ export default function ResourceDetailScreen() {
         )}
 
         <View style={styles.actionsSection}>
+          <KiwixDownloadControl resource={resource} />
+
           <TouchableOpacity
-            style={[styles.primaryBtn, { backgroundColor: catColor }]}
-            onPress={handleOpenKiwix}
-            testID="open-kiwix-btn"
+            style={styles.secondaryBtn}
+            onPress={handleViewOnline}
+            testID="view-online-btn"
           >
-            <ExternalLink color={Colors.white} size={18} />
-            <Text style={styles.primaryBtnText}>Open in Kiwix Library</Text>
+            <ExternalLink color={Colors.textSecondary} size={18} />
+            <Text style={[styles.secondaryBtnText, { color: Colors.textSecondary }]}>
+              View Online Reader
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -254,11 +254,11 @@ export default function ResourceDetailScreen() {
         <View style={styles.infoBox}>
           <Text style={styles.infoBoxTitle}>How to use Kiwix files</Text>
           <Text style={styles.infoBoxText}>
-            1. Tap "Open in Kiwix Library" to browse the file on kiwix.org{'\n'}
-            2. Download the .zim file to your device using Kiwix app{'\n'}
-            3. Install the Kiwix reader app on your phone or computer{'\n'}
-            4. Open the .zim file in Kiwix for full offline access{'\n'}
-            5. Share your library list with group members via Export/Import
+            1. Tap Download to save the .zim file to this device{'\n'}
+            2. Files are stored in the app's Documents/kiwix folder{'\n'}
+            3. Once downloaded, tap "Open With…" to open it in the Kiwix reader app{'\n'}
+            4. Kiwix renders the full encyclopedia offline — no internet needed{'\n'}
+            5. Large files (1+ GB) need free storage and a stable connection
           </Text>
         </View>
       </ScrollView>

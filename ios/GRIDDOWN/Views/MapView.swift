@@ -25,6 +25,9 @@ struct MapView: View {
     @State private var showSuggestionsBanner = false
     @State private var addedSuggestionIds: Set<String> = []
     @State private var searchQuery: String = ""
+    @State private var weatherIsCached = false
+    @State private var weatherCachedAt: Date?
+    @State private var showingNoRallyAlert = false
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -75,6 +78,18 @@ struct MapView: View {
                         .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
                 VStack(spacing: 8) {
+                    Button {
+                        navigateToNearestRally()
+                    } label: {
+                        Image(systemName: "flag.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(.white)
+                            .frame(width: 48, height: 48)
+                            .background(Theme.statusGreen)
+                            .overlay(Circle().stroke(Theme.border, lineWidth: 1))
+                            .clipShape(Circle())
+                            .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+                    }
                     if showLayers {
                         Button {
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -173,6 +188,11 @@ struct MapView: View {
         }
         .task {
             await fetchWeatherForSuggestions()
+        }
+        .alert("No Rally Points", isPresented: $showingNoRallyAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Add a rally point POI first to use rally navigation.")
         }
     }
 
@@ -314,24 +334,76 @@ struct MapView: View {
                     updatedAt: ISO8601DateFormatter().string(from: Date())
                 )
                 weather = wd
-                if WeatherSuggestionsService.getWeatherTrigger(wd) != nil {
-                    showSuggestionsBanner = true
-                    suggestionsLoading = true
-                    let response = await WeatherSuggestionsService.fetchSuggestions(weather: wd, userLocation: loc)
-                    weatherSuggestions = response.suggestions
-                    weatherSummary = response.summary
-                    suggestionsLoading = false
-                }
+                weatherIsCached = false
+                WeatherCache.saveCurrent(wd, latitude: loc.latitude, longitude: loc.longitude)
+                await loadSuggestions(for: wd, at: loc)
             }
         } catch {
-            // Silent fail — suggestions are optional
+            // Offline — fall back to the last cached conditions
+            if let snapshot = WeatherCache.load() {
+                weather = snapshot.current
+                weatherIsCached = true
+                weatherCachedAt = snapshot.savedAt
+                await loadSuggestions(for: snapshot.current, at: loc)
+            }
         }
+    }
+
+    private func loadSuggestions(for wd: WeatherData, at loc: Coordinates) async {
+        if WeatherSuggestionsService.getWeatherTrigger(wd) != nil {
+            showSuggestionsBanner = true
+            suggestionsLoading = true
+            let response = await WeatherSuggestionsService.fetchSuggestions(weather: wd, userLocation: loc)
+            weatherSuggestions = response.suggestions
+            weatherSummary = response.summary
+            suggestionsLoading = false
+        }
+    }
+
+    private func openDirections(to poi: POI) {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        let coordinate = CLLocationCoordinate2D(latitude: poi.coordinates.latitude, longitude: poi.coordinates.longitude)
+        let mapItem = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
+        mapItem.name = poi.name
+        mapItem.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving])
+    }
+
+    private func navigateToNearestRally() {
+        let rallyPoints = store.pois.filter { $0.category == .rallyPoint }
+        guard !rallyPoints.isEmpty else {
+            showingNoRallyAlert = true
+            return
+        }
+        var target = rallyPoints[0]
+        if let loc = userLocation {
+            var best = Double.greatestFiniteMagnitude
+            for rp in rallyPoints {
+                let dLat = rp.coordinates.latitude - loc.latitude
+                let dLng = rp.coordinates.longitude - loc.longitude
+                let dist = dLat * dLat + dLng * dLng
+                if dist < best { best = dist; target = rp }
+            }
+        }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        openDirections(to: target)
     }
 
     @ViewBuilder
     private var weatherBanner: some View {
         if showSuggestionsBanner, weather != nil {
             VStack(alignment: .leading, spacing: 0) {
+                if weatherIsCached, let savedAt = weatherCachedAt {
+                    HStack(spacing: 6) {
+                        Image(systemName: "icloud.slash.fill")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Theme.statusAmber)
+                        Text("OFFLINE — CACHED \(WeatherCache.formatSavedAt(savedAt).uppercased())")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(Theme.statusAmber)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+                }
                 // Header
                 HStack(spacing: 10) {
                     Image(systemName: "cloud.rain.fill")
@@ -616,6 +688,23 @@ struct MapView: View {
             Text(String(format: "%.4f°, %.4f°", poi.coordinates.latitude, poi.coordinates.longitude))
                 .font(.system(size: 11))
                 .foregroundStyle(Theme.textMuted)
+            Button {
+                openDirections(to: poi)
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+                        .font(.system(size: 12, weight: .bold))
+                    Text(poi.category == .rallyPoint ? "Navigate to Rally Point" : "Directions")
+                        .font(.system(size: 12, weight: .bold))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 9)
+                .background(poi.category == .rallyPoint ? Theme.statusGreen : Theme.olive)
+                .clipShape(.rect(cornerRadius: 8))
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 4)
         }
         .padding(16)
         .background(Theme.bgCard)

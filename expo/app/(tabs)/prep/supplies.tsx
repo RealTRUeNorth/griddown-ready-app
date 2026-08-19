@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  Alert,
 } from 'react-native';
 import { router, Href } from 'expo-router';
 import {
@@ -24,9 +25,12 @@ import {
   Search,
   X,
 } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
-import { SupplyCategory } from '@/types';
+import { SupplyCategory, SupplyItem } from '@/types';
+import SwipeableRow from '@/components/SwipeableRow';
+import { getExpirationStatus } from '@/utils/supplyAlerts';
 
 const categoryIcons: Record<SupplyCategory, React.ReactNode> = {
   water: <Droplets color={Colors.oliveLight} size={16} />,
@@ -58,6 +62,20 @@ const allCategories: SupplyCategory[] = [
 
 export default function SuppliesScreen() {
   const { supplies, removeSupply, supplyStats } = useAppData();
+
+  const confirmDelete = useCallback((item: SupplyItem) => {
+    Alert.alert('Remove Supply', `Remove "${item.name}" from inventory?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () => {
+          removeSupply(item.id);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        },
+      },
+    ]);
+  }, [removeSupply]);
   const [filterCategory, setFilterCategory] = useState<SupplyCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -188,18 +206,32 @@ export default function SuppliesScreen() {
             <Text style={styles.categoryTitle}>{category.toUpperCase()}</Text>
             {items.map((item) => {
               const isLow = item.quantity <= item.minimumQuantity;
+              const expStatus = getExpirationStatus(item);
               return (
-                <View key={item.id} style={styles.supplyCard}>
-                  <View style={styles.supplyIcon}>{categoryIcons[item.category]}</View>
-                  <View style={styles.supplyInfo}>
-                    <Text style={styles.supplyName}>{item.name}</Text>
-                    <Text style={styles.supplyQty}>
-                      {item.quantity} {item.unit}
-                      {item.expirationDate ? ` · Exp: ${item.expirationDate}` : ''}
-                    </Text>
-                  </View>
-                  {isLow && <AlertTriangle color={Colors.statusRed} size={16} />}
-                </View>
+                <SwipeableRow key={item.id} onDelete={() => confirmDelete(item)}>
+                  <TouchableOpacity
+                    style={styles.supplyCard}
+                    activeOpacity={0.7}
+                    onPress={() =>
+                      router.push({ pathname: '/add-supply', params: { id: item.id } } as unknown as Href)
+                    }
+                  >
+                    <View style={styles.supplyIcon}>{categoryIcons[item.category]}</View>
+                    <View style={styles.supplyInfo}>
+                      <Text style={styles.supplyName}>{item.name}</Text>
+                      <Text style={styles.supplyQty}>
+                        {item.quantity} {item.unit}
+                        {item.expirationDate ? ` · Exp: ${item.expirationDate}` : ''}
+                      </Text>
+                    </View>
+                    {(isLow || expStatus === 'expired' || expStatus === 'soon') && (
+                      <AlertTriangle
+                        color={expStatus === 'expired' || isLow ? Colors.statusRed : Colors.statusAmber}
+                        size={16}
+                      />
+                    )}
+                  </TouchableOpacity>
+                </SwipeableRow>
               );
             })}
           </View>

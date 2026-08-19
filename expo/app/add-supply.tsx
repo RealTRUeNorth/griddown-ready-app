@@ -10,8 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { router } from 'expo-router';
-import { Package } from 'lucide-react-native';
+import { router, useLocalSearchParams, Stack } from 'expo-router';
+import { Package, Pencil } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
@@ -30,14 +30,20 @@ const categories: { key: SupplyCategory; label: string }[] = [
 ];
 
 export default function AddSupplyScreen() {
-  const { addSupply } = useAppData();
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState<SupplyCategory>('other');
-  const [quantity, setQuantity] = useState('');
-  const [unit, setUnit] = useState('');
-  const [minimumQuantity, setMinimumQuantity] = useState('');
-  const [expirationDate, setExpirationDate] = useState('');
-  const [notes, setNotes] = useState('');
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { supplies, addSupply, updateSupply } = useAppData();
+  const existing = id ? supplies.find((s) => s.id === id) : undefined;
+  const isEditing = Boolean(existing);
+
+  const [name, setName] = useState(existing?.name ?? '');
+  const [category, setCategory] = useState<SupplyCategory>(existing?.category ?? 'other');
+  const [quantity, setQuantity] = useState(existing ? String(existing.quantity) : '');
+  const [unit, setUnit] = useState(existing?.unit ?? '');
+  const [minimumQuantity, setMinimumQuantity] = useState(
+    existing ? String(existing.minimumQuantity) : ''
+  );
+  const [expirationDate, setExpirationDate] = useState(existing?.expirationDate ?? '');
+  const [notes, setNotes] = useState(existing?.notes ?? '');
 
   const handleSave = useCallback(() => {
     if (!name.trim()) {
@@ -51,7 +57,7 @@ export default function AddSupplyScreen() {
     }
 
     const item: SupplyItem = {
-      id: `s_${Date.now()}`,
+      id: existing?.id ?? `s_${Date.now()}`,
       name: name.trim(),
       category,
       quantity: qty,
@@ -61,12 +67,18 @@ export default function AddSupplyScreen() {
       notes: notes.trim() || undefined,
     };
 
-    addSupply(item);
+    if (existing) {
+      updateSupply(item);
+    } else {
+      addSupply(item);
+    }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.back();
-  }, [name, category, quantity, unit, minimumQuantity, expirationDate, notes, addSupply]);
+  }, [name, category, quantity, unit, minimumQuantity, expirationDate, notes, addSupply, updateSupply, existing]);
 
   return (
+    <>
+      <Stack.Screen options={{ title: isEditing ? 'Edit Supply' : 'Add Supply' }} />
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -74,9 +86,13 @@ export default function AddSupplyScreen() {
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <View style={styles.headerIcon}>
-            <Package color={Colors.orange} size={24} />
+            {isEditing ? (
+              <Pencil color={Colors.orange} size={24} />
+            ) : (
+              <Package color={Colors.orange} size={24} />
+            )}
           </View>
-          <Text style={styles.headerTitle}>Add Supply Item</Text>
+          <Text style={styles.headerTitle}>{isEditing ? 'Edit Supply Item' : 'Add Supply Item'}</Text>
         </View>
 
         <Text style={styles.label}>ITEM NAME *</Text>
@@ -172,10 +188,11 @@ export default function AddSupplyScreen() {
           activeOpacity={0.8}
           testID="save-supply-btn"
         >
-          <Text style={styles.saveButtonText}>ADD ITEM</Text>
+          <Text style={styles.saveButtonText}>{isEditing ? 'SAVE CHANGES' : 'ADD ITEM'}</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
+    </>
   );
 }
 

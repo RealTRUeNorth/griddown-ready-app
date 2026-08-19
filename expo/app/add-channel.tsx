@@ -9,7 +9,7 @@ import {
   Alert,
   Switch,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams, Stack } from 'expo-router';
 import { Radio, Check } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -21,16 +21,20 @@ const BANDS: CommsBand[] = ['FRS', 'GMRS', 'MURS', 'CB', 'VHF_Marine', 'HAM_VHF'
 const MODES: CommsMode[] = ['simplex', 'duplex', 'mesh', 'repeater'];
 
 export default function AddChannelScreen() {
-  const { addCommsChannel } = useAppData();
-  const [name, setName] = useState<string>('');
-  const [band, setBand] = useState<CommsBand>('FRS');
-  const [frequency, setFrequency] = useState<string>('');
-  const [mode, setMode] = useState<CommsMode>('simplex');
-  const [purpose, setPurpose] = useState<string>('');
-  const [ctcssTone, setCtcssTone] = useState<string>('');
-  const [power, setPower] = useState<string>('');
-  const [notes, setNotes] = useState<string>('');
-  const [isPrimary, setIsPrimary] = useState<boolean>(false);
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { commsChannels, addCommsChannel, updateCommsChannel } = useAppData();
+  const existing = id ? commsChannels.find((c) => c.id === id) : undefined;
+  const isEditing = Boolean(existing);
+
+  const [name, setName] = useState<string>(existing?.name ?? '');
+  const [band, setBand] = useState<CommsBand>(existing?.band ?? 'FRS');
+  const [frequency, setFrequency] = useState<string>(existing?.frequency ?? '');
+  const [mode, setMode] = useState<CommsMode>(existing?.mode ?? 'simplex');
+  const [purpose, setPurpose] = useState<string>(existing?.purpose ?? '');
+  const [ctcssTone, setCtcssTone] = useState<string>(existing?.ctcssTone ?? '');
+  const [power, setPower] = useState<string>(existing?.power ?? '');
+  const [notes, setNotes] = useState<string>(existing?.notes ?? '');
+  const [isPrimary, setIsPrimary] = useState<boolean>(existing?.isPrimary ?? false);
 
   const handleSave = useCallback(() => {
     if (!name.trim()) {
@@ -43,7 +47,7 @@ export default function AddChannelScreen() {
     }
 
     const channel: CommsChannel = {
-      id: `ch_${Date.now()}`,
+      id: existing?.id ?? `ch_${Date.now()}`,
       name: name.trim().toUpperCase(),
       band,
       frequency: frequency.trim(),
@@ -55,13 +59,19 @@ export default function AddChannelScreen() {
       isPrimary,
     };
 
-    addCommsChannel(channel);
+    if (existing) {
+      updateCommsChannel(channel);
+    } else {
+      addCommsChannel(channel);
+    }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     console.log('Channel added:', channel);
     router.back();
-  }, [name, band, frequency, mode, purpose, ctcssTone, power, notes, isPrimary, addCommsChannel]);
+  }, [name, band, frequency, mode, purpose, ctcssTone, power, notes, isPrimary, addCommsChannel, updateCommsChannel, existing]);
 
   return (
+    <>
+      <Stack.Screen options={{ title: isEditing ? 'Edit Channel' : 'Add Channel' }} />
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.field}>
         <Text style={styles.label}>CHANNEL NAME</Text>
@@ -200,9 +210,10 @@ export default function AddChannelScreen() {
         testID="save-channel-btn"
       >
         <Check color={Colors.white} size={18} />
-        <Text style={styles.saveText}>ADD CHANNEL</Text>
+        <Text style={styles.saveText}>{isEditing ? 'SAVE CHANGES' : 'ADD CHANNEL'}</Text>
       </TouchableOpacity>
     </ScrollView>
+    </>
   );
 }
 

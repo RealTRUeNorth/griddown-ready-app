@@ -21,16 +21,18 @@ import {
 import { defaultCommsChannels, defaultCommsRepeaters } from '@/mocks/comms';
 import { kiwixCatalog } from '@/mocks/kiwix';
 import { allSeedPois, defaultRoutes as seedRoutes } from '@/mocks/pois';
+import { seedSupplies } from '@/mocks/supplies';
+import { parseOpsBackup, serializeOpsBackup } from '@/utils/opsBackup';
 
 const STORAGE_KEY = 'griddown_app_data';
 const DATA_VERSION_KEY = 'griddown_data_version';
-const CURRENT_DATA_VERSION = 2; // Bumped when seed POIs/routes expanded
+const CURRENT_DATA_VERSION = 3; // Bumped when seed supplies added
 
 const defaultAppData: AppData = {
   alertLevel: 'green',
   groupName: 'My Group',
   members: defaultMembers,
-  supplies: [],
+  supplies: seedSupplies,
   checklists: defaultChecklists,
   pois: allSeedPois,
   routes: seedRoutes,
@@ -44,7 +46,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
   const [alertLevel, setAlertLevel] = useState<AlertLevel>('green');
   const [groupName, setGroupName] = useState<string>('My Group');
   const [members, setMembers] = useState<GroupMember[]>(defaultMembers);
-  const [supplies, setSupplies] = useState<SupplyItem[]>([]);
+  const [supplies, setSupplies] = useState<SupplyItem[]>(seedSupplies);
   const [checklists, setChecklists] = useState<Checklist[]>(defaultChecklists);
   const [pois, setPois] = useState<POI[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
@@ -73,6 +75,9 @@ export const [AppProvider, useAppData] = createContextHook(() => {
             const missingRoutes = seedRoutes.filter((r) => !existingRouteIds.has(r.id));
             if (missingRoutes.length > 0) {
               parsed.routes = [...parsed.routes, ...missingRoutes];
+            }
+            if (!parsed.supplies || parsed.supplies.length === 0) {
+              parsed.supplies = seedSupplies;
             }
             await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
             await AsyncStorage.setItem(DATA_VERSION_KEY, String(CURRENT_DATA_VERSION));
@@ -437,6 +442,50 @@ export const [AppProvider, useAppData] = createContextHook(() => {
     return JSON.stringify(kiwixLibrary, null, 2);
   }, [kiwixLibrary]);
 
+  const currentSnapshot = useCallback((): AppData => ({
+    alertLevel,
+    groupName,
+    members,
+    supplies,
+    checklists,
+    pois,
+    routes,
+    commsChannels,
+    commsRepeaters,
+    kiwixLibrary,
+  }), [alertLevel, groupName, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary]);
+
+  const exportOpsBackup = useCallback(() => {
+    return serializeOpsBackup(currentSnapshot());
+  }, [currentSnapshot]);
+
+  const replaceAllData = useCallback(
+    (incoming: AppData) => {
+      setAlertLevel(incoming.alertLevel);
+      setGroupName(incoming.groupName);
+      setMembers(incoming.members);
+      setSupplies(incoming.supplies);
+      setChecklists(incoming.checklists);
+      setPois(incoming.pois);
+      setRoutes(incoming.routes);
+      setCommsChannels(incoming.commsChannels);
+      setCommsRepeaters(incoming.commsRepeaters);
+      setKiwixLibrary(incoming.kiwixLibrary);
+      saveMutation.mutate(incoming);
+    },
+    [saveMutation]
+  );
+
+  const importOpsBackup = useCallback(
+    (raw: string): boolean => {
+      const parsed = parseOpsBackup(raw);
+      if (!parsed) return false;
+      replaceAllData(parsed);
+      return true;
+    },
+    [replaceAllData]
+  );
+
   const removeChecklist = useCallback(
     (id: string) => {
       const updated = checklists.filter((cl) => cl.id !== id);
@@ -507,5 +556,9 @@ export const [AppProvider, useAppData] = createContextHook(() => {
     removeKiwixResource,
     importKiwixLibrary,
     exportKiwixLibrary,
+    exportOpsBackup,
+    importOpsBackup,
+    replaceAllData,
+    currentSnapshot,
   };
 });

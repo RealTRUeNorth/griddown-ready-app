@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams, Stack } from 'expo-router';
 import { Antenna, Check } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -16,15 +16,19 @@ import { useAppData } from '@/providers/AppProvider';
 import { CommsRepeater } from '@/types';
 
 export default function AddRepeaterScreen() {
-  const { addCommsRepeater } = useAppData();
-  const [name, setName] = useState<string>('');
-  const [inputFreq, setInputFreq] = useState<string>('');
-  const [outputFreq, setOutputFreq] = useState<string>('');
-  const [offset, setOffset] = useState<string>('');
-  const [ctcssTone, setCtcssTone] = useState<string>('');
-  const [location, setLocation] = useState<string>('');
-  const [range, setRange] = useState<string>('');
-  const [notes, setNotes] = useState<string>('');
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { commsRepeaters, addCommsRepeater, updateCommsRepeater } = useAppData();
+  const existing = id ? commsRepeaters.find((r) => r.id === id) : undefined;
+  const isEditing = Boolean(existing);
+
+  const [name, setName] = useState<string>(existing?.name ?? '');
+  const [inputFreq, setInputFreq] = useState<string>(existing?.inputFreq ?? '');
+  const [outputFreq, setOutputFreq] = useState<string>(existing?.outputFreq ?? '');
+  const [offset, setOffset] = useState<string>(existing?.offset ?? '');
+  const [ctcssTone, setCtcssTone] = useState<string>(existing?.ctcssTone ?? '');
+  const [location, setLocation] = useState<string>(existing?.location ?? '');
+  const [range, setRange] = useState<string>(existing?.range ?? '');
+  const [notes, setNotes] = useState<string>(existing?.notes ?? '');
 
   const handleSave = useCallback(() => {
     if (!name.trim()) {
@@ -37,7 +41,7 @@ export default function AddRepeaterScreen() {
     }
 
     const repeater: CommsRepeater = {
-      id: `rpt_${Date.now()}`,
+      id: existing?.id ?? `rpt_${Date.now()}`,
       name: name.trim().toUpperCase(),
       inputFreq: inputFreq.trim(),
       outputFreq: outputFreq.trim(),
@@ -46,15 +50,22 @@ export default function AddRepeaterScreen() {
       location: location.trim() || undefined,
       range: range.trim() || undefined,
       notes: notes.trim() || undefined,
+      coordinates: existing?.coordinates,
     };
 
-    addCommsRepeater(repeater);
+    if (existing) {
+      updateCommsRepeater(repeater);
+    } else {
+      addCommsRepeater(repeater);
+    }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     console.log('Repeater added:', repeater);
     router.back();
-  }, [name, inputFreq, outputFreq, offset, ctcssTone, location, range, notes, addCommsRepeater]);
+  }, [name, inputFreq, outputFreq, offset, ctcssTone, location, range, notes, addCommsRepeater, updateCommsRepeater, existing]);
 
   return (
+    <>
+      <Stack.Screen options={{ title: isEditing ? 'Edit Repeater' : 'Add Repeater' }} />
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.field}>
         <Text style={styles.label}>REPEATER NAME</Text>
@@ -159,9 +170,10 @@ export default function AddRepeaterScreen() {
         testID="save-repeater-btn"
       >
         <Check color={Colors.white} size={18} />
-        <Text style={styles.saveText}>ADD REPEATER</Text>
+        <Text style={styles.saveText}>{isEditing ? 'SAVE CHANGES' : 'ADD REPEATER'}</Text>
       </TouchableOpacity>
     </ScrollView>
+    </>
   );
 }
 

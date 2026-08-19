@@ -10,7 +10,7 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { MapPin, Check } from 'lucide-react-native';
+import { MapPin, Check, Pencil } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
@@ -20,14 +20,20 @@ import { POICategory } from '@/types';
 const categories: POICategory[] = ['rally_point', 'water', 'shelter', 'medical', 'supply_cache', 'comms', 'gas_station', 'hospital', 'pharmacy', 'police', 'fire_station', 'weather_resource', 'hazard', 'other'];
 
 export default function AddPoiScreen() {
-  const { lat, lng } = useLocalSearchParams<{ lat?: string; lng?: string }>();
-  const { addPoi } = useAppData();
+  const { lat, lng, id } = useLocalSearchParams<{ lat?: string; lng?: string; id?: string }>();
+  const { pois, addPoi, updatePoi } = useAppData();
+  const existing = id ? pois.find((p) => p.id === id) : undefined;
+  const isEditing = Boolean(existing);
 
-  const [name, setName] = useState<string>('');
-  const [category, setCategory] = useState<POICategory>('rally_point');
-  const [latitude, setLatitude] = useState<string>(lat ?? '');
-  const [longitude, setLongitude] = useState<string>(lng ?? '');
-  const [notes, setNotes] = useState<string>('');
+  const [name, setName] = useState<string>(existing?.name ?? '');
+  const [category, setCategory] = useState<POICategory>(existing?.category ?? 'rally_point');
+  const [latitude, setLatitude] = useState<string>(
+    existing ? String(existing.coordinates.latitude) : (lat ?? '')
+  );
+  const [longitude, setLongitude] = useState<string>(
+    existing ? String(existing.coordinates.longitude) : (lng ?? '')
+  );
+  const [notes, setNotes] = useState<string>(existing?.notes ?? '');
 
   const canSave = name.trim().length > 0 && latitude.trim().length > 0 && longitude.trim().length > 0;
 
@@ -43,17 +49,22 @@ export default function AddPoiScreen() {
     }
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    addPoi({
-      id: `poi-${Date.now()}`,
+    const payload = {
+      id: existing?.id ?? `poi-${Date.now()}`,
       name: name.trim(),
       category,
       coordinates: { latitude: parsedLat, longitude: parsedLng },
       notes: notes.trim() || undefined,
-      createdAt: new Date().toISOString(),
-    });
+      createdAt: existing?.createdAt ?? new Date().toISOString(),
+    };
+    if (existing) {
+      updatePoi(payload);
+    } else {
+      addPoi(payload);
+    }
 
     router.back();
-  }, [canSave, name, category, latitude, longitude, notes, addPoi]);
+  }, [canSave, name, category, latitude, longitude, notes, addPoi, updatePoi, existing]);
 
   return (
     <KeyboardAvoidingView
@@ -63,10 +74,12 @@ export default function AddPoiScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <View style={styles.iconCircle}>
-            <MapPin color={Colors.orange} size={24} />
+            {isEditing ? <Pencil color={Colors.orange} size={24} /> : <MapPin color={Colors.orange} size={24} />}
           </View>
-          <Text style={styles.title}>New Point of Interest</Text>
-          <Text style={styles.subtitle}>Mark a location on the tactical map</Text>
+          <Text style={styles.title}>{isEditing ? 'Edit Point of Interest' : 'New Point of Interest'}</Text>
+          <Text style={styles.subtitle}>
+            {isEditing ? 'Update this map marker' : 'Mark a location on the tactical map'}
+          </Text>
         </View>
 
         <Text style={styles.label}>NAME</Text>
@@ -159,7 +172,7 @@ export default function AddPoiScreen() {
           testID="poi-save-button"
         >
           <Check color={Colors.white} size={18} />
-          <Text style={styles.saveButtonText}>Add Point of Interest</Text>
+          <Text style={styles.saveButtonText}>{isEditing ? 'Save Changes' : 'Add Point of Interest'}</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>

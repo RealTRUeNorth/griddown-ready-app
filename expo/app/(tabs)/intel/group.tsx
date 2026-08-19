@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,15 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  Alert,
 } from 'react-native';
 import { router, Href } from 'expo-router';
 import { Plus, User, Users, ChevronRight, Search, X } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
+import { GroupMember } from '@/types';
+import SwipeableRow from '@/components/SwipeableRow';
 
 const statusColors: Record<string, string> = {
   ready: Colors.statusGreen,
@@ -19,8 +23,22 @@ const statusColors: Record<string, string> = {
 };
 
 export default function GroupScreen() {
-  const { members, groupName } = useAppData();
+  const { members, groupName, removeMember } = useAppData();
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const confirmDelete = useCallback((member: GroupMember) => {
+    Alert.alert('Remove Member', `Remove ${member.name} from the group?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () => {
+          removeMember(member.id);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        },
+      },
+    ]);
+  }, [removeMember]);
 
   const filteredMembers = useMemo(() => {
     if (!searchQuery.trim()) return members;
@@ -61,8 +79,8 @@ export default function GroupScreen() {
         </View>
 
         {filteredMembers.map((member) => (
+          <SwipeableRow key={member.id} onDelete={() => confirmDelete(member)}>
           <TouchableOpacity
-            key={member.id}
             style={styles.memberCard}
             onPress={() =>
               router.push({ pathname: '/member-detail', params: { id: member.id } } as unknown as Href)
@@ -95,6 +113,7 @@ export default function GroupScreen() {
             </View>
             <ChevronRight color={Colors.textMuted} size={18} />
           </TouchableOpacity>
+          </SwipeableRow>
         ))}
 
         {filteredMembers.length === 0 && members.length > 0 && (

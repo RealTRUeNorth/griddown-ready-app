@@ -10,7 +10,7 @@ import {
   KeyboardAvoidingView,
   Alert,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams, Stack } from 'expo-router';
 import { Route as RouteIcon, Plus, Check, Trash2, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -19,12 +19,15 @@ import { ROUTE_COLORS } from '@/constants/mapHelpers';
 import { Coordinates } from '@/types';
 
 export default function AddRouteScreen() {
-  const { addRoute } = useAppData();
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { routes, addRoute, updateRoute } = useAppData();
+  const existing = id ? routes.find((r) => r.id === id) : undefined;
+  const isEditing = Boolean(existing);
 
-  const [name, setName] = useState<string>('');
-  const [color, setColor] = useState<string>(ROUTE_COLORS[0]);
-  const [notes, setNotes] = useState<string>('');
-  const [waypoints, setWaypoints] = useState<Coordinates[]>([]);
+  const [name, setName] = useState<string>(existing?.name ?? '');
+  const [color, setColor] = useState<string>(existing?.color ?? ROUTE_COLORS[0]);
+  const [notes, setNotes] = useState<string>(existing?.notes ?? '');
+  const [waypoints, setWaypoints] = useState<Coordinates[]>(existing?.waypoints ?? []);
   const [latInput, setLatInput] = useState<string>('');
   const [lngInput, setLngInput] = useState<string>('');
 
@@ -52,19 +55,26 @@ export default function AddRouteScreen() {
     if (!canSave) return;
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    addRoute({
-      id: `route-${Date.now()}`,
+    const payload = {
+      id: existing?.id ?? `route-${Date.now()}`,
       name: name.trim(),
       color,
       waypoints,
       notes: notes.trim() || undefined,
-      createdAt: new Date().toISOString(),
-    });
+      createdAt: existing?.createdAt ?? new Date().toISOString(),
+    };
+    if (existing) {
+      updateRoute(payload);
+    } else {
+      addRoute(payload);
+    }
 
     router.back();
-  }, [canSave, name, color, waypoints, notes, addRoute]);
+  }, [canSave, name, color, waypoints, notes, addRoute, updateRoute, existing]);
 
   return (
+    <>
+      <Stack.Screen options={{ title: isEditing ? 'Edit Route' : 'Add Route' }} />
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -74,8 +84,10 @@ export default function AddRouteScreen() {
           <View style={styles.iconCircle}>
             <RouteIcon color={Colors.oliveLight} size={24} />
           </View>
-          <Text style={styles.title}>New Route</Text>
-          <Text style={styles.subtitle}>Define a path with waypoints</Text>
+          <Text style={styles.title}>{isEditing ? 'Edit Route' : 'New Route'}</Text>
+          <Text style={styles.subtitle}>
+            {isEditing ? 'Update waypoints and details' : 'Define a path with waypoints'}
+          </Text>
         </View>
 
         <Text style={styles.label}>NAME</Text>
@@ -184,10 +196,11 @@ export default function AddRouteScreen() {
           testID="route-save-button"
         >
           <Check color={Colors.white} size={18} />
-          <Text style={styles.saveButtonText}>Create Route</Text>
+          <Text style={styles.saveButtonText}>{isEditing ? 'Save Changes' : 'Create Route'}</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
+    </>
   );
 }
 

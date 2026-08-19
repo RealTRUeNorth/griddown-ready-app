@@ -10,8 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { router } from 'expo-router';
-import { UserPlus, X } from 'lucide-react-native';
+import { router, useLocalSearchParams, Stack } from 'expo-router';
+import { UserPlus, Pencil } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
@@ -30,13 +30,17 @@ const statusColors: Record<string, string> = {
 };
 
 export default function AddMemberScreen() {
-  const { addMember } = useAppData();
-  const [name, setName] = useState('');
-  const [role, setRole] = useState('');
-  const [status, setStatus] = useState<GroupMember['status']>('unknown');
-  const [skillsText, setSkillsText] = useState('');
-  const [phone, setPhone] = useState('');
-  const [notes, setNotes] = useState('');
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { members, addMember, updateMember } = useAppData();
+  const existing = id ? members.find((m) => m.id === id) : undefined;
+  const isEditing = Boolean(existing);
+
+  const [name, setName] = useState(existing?.name ?? '');
+  const [role, setRole] = useState(existing?.role ?? '');
+  const [status, setStatus] = useState<GroupMember['status']>(existing?.status ?? 'unknown');
+  const [skillsText, setSkillsText] = useState(existing?.skills.join(', ') ?? '');
+  const [phone, setPhone] = useState(existing?.phone ?? '');
+  const [notes, setNotes] = useState(existing?.notes ?? '');
 
   const handleSave = useCallback(() => {
     if (!name.trim()) {
@@ -45,7 +49,7 @@ export default function AddMemberScreen() {
     }
 
     const member: GroupMember = {
-      id: `m_${Date.now()}`,
+      id: existing?.id ?? `m_${Date.now()}`,
       name: name.trim(),
       role: role.trim() || 'Member',
       status,
@@ -55,14 +59,22 @@ export default function AddMemberScreen() {
         .filter(Boolean),
       phone: phone.trim() || undefined,
       notes: notes.trim() || undefined,
+      location: existing?.location,
+      locationUpdatedAt: existing?.locationUpdatedAt,
     };
 
-    addMember(member);
+    if (existing) {
+      updateMember(member);
+    } else {
+      addMember(member);
+    }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.back();
-  }, [name, role, status, skillsText, phone, notes, addMember]);
+  }, [name, role, status, skillsText, phone, notes, addMember, updateMember, existing]);
 
   return (
+    <>
+      <Stack.Screen options={{ title: isEditing ? 'Edit Member' : 'Add Member' }} />
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -70,9 +82,13 @@ export default function AddMemberScreen() {
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <View style={styles.headerIcon}>
-            <UserPlus color={Colors.orange} size={24} />
+            {isEditing ? (
+              <Pencil color={Colors.orange} size={24} />
+            ) : (
+              <UserPlus color={Colors.orange} size={24} />
+            )}
           </View>
-          <Text style={styles.headerTitle}>Add Group Member</Text>
+          <Text style={styles.headerTitle}>{isEditing ? 'Edit Group Member' : 'Add Group Member'}</Text>
         </View>
 
         <Text style={styles.label}>NAME *</Text>
@@ -159,10 +175,11 @@ export default function AddMemberScreen() {
           activeOpacity={0.8}
           testID="save-member-btn"
         >
-          <Text style={styles.saveButtonText}>ADD MEMBER</Text>
+          <Text style={styles.saveButtonText}>{isEditing ? 'SAVE CHANGES' : 'ADD MEMBER'}</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
+    </>
   );
 }
 

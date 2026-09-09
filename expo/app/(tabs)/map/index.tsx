@@ -130,47 +130,54 @@ export default function MapScreen() {
   const weatherFromCache = weatherQuery.data?.fromCache ?? false;
   const weatherCachedAt = weatherQuery.data?.cachedAt;
 
+  const acquireLocation = useCallback(async (): Promise<Coordinates | null> => {
+    try {
+      if (Platform.OS === 'web') {
+        if (!navigator.geolocation) return null;
+        return await new Promise<Coordinates | null>((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            (position) =>
+              resolve({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+              }),
+            () => resolve(null),
+            { timeout: 10000 }
+          );
+        });
+      }
+
+      const Location = require('expo-location');
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        console.log('Location permission denied');
+        return null;
+      }
+
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      return {
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      };
+    } catch (e) {
+      console.log('Error getting location:', e);
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
     (async () => {
-      try {
-        if (Platform.OS === 'web') {
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-              (position) => {
-                setUserLocation({
-                  latitude: position.coords.latitude,
-                  longitude: position.coords.longitude,
-                });
-                console.log('Web location obtained:', position.coords);
-              },
-              (error) => {
-                console.log('Web geolocation error:', error.message);
-              }
-            );
-          }
-          return;
-        }
-
-        const Location = require('expo-location');
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          console.log('Location permission denied');
-          return;
-        }
-
-        const loc = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        setUserLocation({
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
-        });
-        console.log('Native location obtained:', loc.coords);
-      } catch (e) {
-        console.log('Error getting location:', e);
+      const loc = await acquireLocation();
+      if (loc) {
+        setUserLocation(loc);
+        console.log('Location obtained:', loc);
+      } else {
+        console.log('Location unavailable or permission denied');
       }
     })();
-  }, []);
+  }, [acquireLocation]);
 
   const toggleDrawer = useCallback(() => {
     const toValue = drawerExpanded ? 0 : 1;
@@ -229,20 +236,29 @@ export default function MapScreen() {
     [infrastructurePois, searchResults, isSearching]
   );
 
-  const centerOnUser = useCallback(() => {
-    if (!userLocation) {
-      Alert.alert('Location Unavailable', 'Unable to determine your current location.');
-      return;
-    }
+  const centerOnUser = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    let loc = userLocation;
+    if (!loc) {
+      // No fix yet — try to acquire one on demand
+      loc = await acquireLocation();
+      if (!loc) {
+        Alert.alert(
+          'Location Unavailable',
+          'Could not determine your current location. Check that location services are enabled and permission is granted.'
+        );
+        return;
+      }
+      setUserLocation(loc);
+    }
     if (mapRef.current && Platform.OS !== 'web') {
       mapRef.current.animateToRegion({
-        ...userLocation,
+        ...loc,
         latitudeDelta: 0.01,
         longitudeDelta: 0.01,
       }, 500);
     }
-  }, [userLocation]);
+  }, [userLocation, acquireLocation]);
 
   const handleMapLongPress = useCallback((e: any) => {
     if (Platform.OS === 'web') return;
@@ -681,11 +697,12 @@ export default function MapScreen() {
 
       <View style={styles.fabColumn}>
         <TouchableOpacity
-          style={styles.fab}
-          onPress={centerOnUser}
+          style={[styles.fab, { backgroundColor: Colors.oliveMuted }]}
+          onPress={() => void centerOnUser()}
           activeOpacity={0.8}
+          testID="center-on-user-btn"
         >
-          <Navigation color={Colors.white} size={20} />
+          <Crosshair color={Colors.white} size={20} />
         </TouchableOpacity>
 
         <TouchableOpacity

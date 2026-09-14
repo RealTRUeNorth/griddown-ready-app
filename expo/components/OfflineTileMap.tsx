@@ -8,7 +8,25 @@ import {
   TouchableOpacity,
   Platform,
 } from 'react-native';
-import { Plus, Minus, MapPin } from 'lucide-react-native';
+import {
+  Plus,
+  Minus,
+  MapPin,
+  Flag,
+  Package,
+  Droplets,
+  Home,
+  HeartPulse,
+  TriangleAlert,
+  Radio,
+  Fuel,
+  Building2,
+  Pill,
+  ShieldAlert,
+  Flame,
+  CloudRain,
+  type LucideIcon,
+} from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { POI_CATEGORY_CONFIG } from '@/constants/mapHelpers';
 import { Coordinates, POI } from '@/types';
@@ -16,6 +34,24 @@ import type { MapPack } from '@/providers/MapPacksProvider';
 import { tileFileName } from '@/utils/tileMath';
 
 const TILE = 256;
+
+/** Maps the kebab-case icon names in POI_CATEGORY_CONFIG to lucide components. */
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  droplets: Droplets,
+  home: Home,
+  'heart-pulse': HeartPulse,
+  package: Package,
+  flag: Flag,
+  'alert-triangle': TriangleAlert,
+  radio: Radio,
+  fuel: Fuel,
+  'building-2': Building2,
+  pill: Pill,
+  'shield-alert': ShieldAlert,
+  flame: Flame,
+  'cloud-rain': CloudRain,
+  'map-pin': MapPin,
+};
 
 let FileSystem: any = null;
 if (Platform.OS !== 'web') {
@@ -203,15 +239,25 @@ export default function OfflineTileMap({ pack, pois, userLocation, onPoiPress }:
         const pos = toScreen(poi.coordinates.latitude, poi.coordinates.longitude);
         if (!pos) return null;
         const config = POI_CATEGORY_CONFIG[poi.category];
+        const Icon = CATEGORY_ICONS[config?.icon ?? ''] ?? MapPin;
+        const showLabel = poi.category === 'rally_point' || poi.category === 'supply_cache';
         return (
-          <TouchableOpacity
-            key={poi.id}
-            style={[styles.poiMarker, { left: pos.left - 14, top: pos.top - 14 }]}
-            onPress={() => onPoiPress(poi)}
-            activeOpacity={0.8}
-          >
-            <MapPin color={Colors.white} size={13} />
-          </TouchableOpacity>
+          <View key={poi.id} style={{ position: 'absolute', left: pos.left, top: pos.top }} pointerEvents="box-none">
+            <TouchableOpacity
+              style={[styles.poiMarker, { backgroundColor: config?.color ?? Colors.orange }]}
+              onPress={() => onPoiPress(poi)}
+              activeOpacity={0.8}
+            >
+              <Icon color={Colors.white} size={13} />
+            </TouchableOpacity>
+            {showLabel && (
+              <View style={styles.poiLabel} pointerEvents="none">
+                <Text style={styles.poiLabelText} numberOfLines={1}>
+                  {poi.name}
+                </Text>
+              </View>
+            )}
+          </View>
         );
       })}
 
@@ -248,10 +294,11 @@ const styles = StyleSheet.create({
   },
   poiMarker: {
     position: 'absolute',
+    left: -14,
+    top: -14,
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: Colors.orange,
     borderWidth: 2,
     borderColor: Colors.white,
     alignItems: 'center',
@@ -261,6 +308,24 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 3,
+  },
+  poiLabel: {
+    position: 'absolute',
+    top: 16,
+    left: -44,
+    width: 88,
+    backgroundColor: 'rgba(26, 29, 26, 0.92)',
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  poiLabelText: {
+    color: Colors.textPrimary,
+    fontSize: 9,
+    fontWeight: '700' as const,
+    textAlign: 'center',
   },
   userDotOuter: {
     position: 'absolute',

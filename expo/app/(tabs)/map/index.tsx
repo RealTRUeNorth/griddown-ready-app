@@ -307,6 +307,17 @@ export default function MapScreen() {
     [infrastructurePois, searchResults, isSearching]
   );
 
+  // POIs shown on the offline slippy map — respects the same layer toggles
+  // and search filtering as the online map so rally points and supply
+  // caches stay visible (and controllable) with no signal.
+  const offlinePois = useMemo(
+    () => [
+      ...(showPois ? visibleCustomPois : []),
+      ...(showInfrastructure ? visibleInfrastructurePois : []),
+    ],
+    [showPois, visibleCustomPois, showInfrastructure, visibleInfrastructurePois]
+  );
+
   const centerOnUser = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     let loc = userLocation;
@@ -559,7 +570,7 @@ export default function MapScreen() {
       {offlineMode && activePack ? (
         <OfflineTileMap
           pack={activePack}
-          pois={pois}
+          pois={offlinePois}
           userLocation={userLocation}
           onPoiPress={(p) => setSelectedPoi(p)}
         />

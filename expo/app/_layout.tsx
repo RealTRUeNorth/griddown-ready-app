@@ -5,6 +5,7 @@ import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider } from "@/providers/AppProvider";
 import { DownloadProvider } from "@/providers/DownloadProvider";
+import { MapPacksProvider } from "@/providers/MapPacksProvider";
 import Colors from "@/constants/colors";
 
 SplashScreen.preventAutoHideAsync();
@@ -81,7 +82,9 @@ export default function RootLayout() {
       <GestureHandlerRootView>
         <AppProvider>
           <DownloadProvider>
-            <RootLayoutNav />
+            <MapPacksProvider>
+              <RootLayoutNav />
+            </MapPacksProvider>
           </DownloadProvider>
         </AppProvider>
       </GestureHandlerRootView>

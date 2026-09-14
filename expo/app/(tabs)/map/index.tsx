@@ -32,6 +32,8 @@ import {
   ShieldAlert,
   Flame,
   Search,
+  Download,
+  Map as MapIcon,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -42,6 +44,10 @@ import WeatherSuggestionsBanner from '@/components/WeatherSuggestionsBanner';
 import { saveWeatherCache, loadWeatherCache, formatCachedAt } from '@/utils/weatherCache';
 import { openDirectionsTo } from '@/utils/navigation';
 import { CloudOff } from 'lucide-react-native';
+import OfflineTileMap from '@/components/OfflineTileMap';
+import { useMapPacks } from '@/providers/MapPacksProvider';
+import { formatBytes } from '@/providers/DownloadProvider';
+import { MAX_TILES_PER_PACK, type MapRegion } from '@/utils/tileMath';
 
 let MapView: any = null;
 let Marker: any = null;
@@ -85,6 +91,9 @@ export default function MapScreen() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const mapRef = useRef<any>(null);
   const drawerAnim = useRef(new Animated.Value(0)).current;
+  const mapPacks = useMapPacks();
+  const [offlineMode, setOfflineMode] = useState<boolean>(false);
+  const [currentRegion, setCurrentRegion] = useState<MapRegion | null>(null);
 
   // Fetch weather for resource suggestions (falls back to cached data offline)
   const weatherQuery = useQuery({
@@ -129,6 +138,68 @@ export default function MapScreen() {
   const weatherData = weatherQuery.data?.data ?? null;
   const weatherFromCache = weatherQuery.data?.fromCache ?? false;
   const weatherCachedAt = weatherQuery.data?.cachedAt;
+
+  const activePack = useMemo(() => {
+    const lat = userLocation?.latitude ?? currentRegion?.latitude;
+    const lng = userLocation?.longitude ?? currentRegion?.longitude;
+    if (lat == null || lng == null) return null;
+    return mapPacks.packCovering(lat, lng);
+  }, [userLocation, currentRegion, mapPacks]);
+
+  const activeDownload = useMemo(() => {
+    const entries = Object.entries(mapPacks.activeDownloads);
+    return entries.length > 0 ? entries[0] : null;
+  }, [mapPacks.activeDownloads]);
+
+  useEffect(() => {
+    if (!activePack && offlineMode) setOfflineMode(false);
+  }, [activePack, offlineMode]);
+
+  const handlePrepareOfflineArea = useCallback(() => {
+    const region = currentRegion ?? DEFAULT_REGION;
+    const est = mapPacks.estimatePack(region);
+    if (est.tileCount > MAX_TILES_PER_PACK) {
+      Alert.alert(
+        'Area Too Large',
+        `That view covers ${est.tileCount} map tiles (~${formatBytes(est.sizeBytes)}). Zoom in closer and try again.`
+      );
+      return;
+    }
+    Alert.alert(
+      'Prepare Offline Maps',
+      `Download ${est.tileCount} map tiles (~${formatBytes(est.sizeBytes)}) for the current view? Once saved, they work with no signal at all.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Download',
+          onPress: () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            void mapPacks
+              .downloadPack(`Area — ${new Date().toLocaleDateString()}`, region)
+              .then((pack) => {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+                if (pack) setOfflineMode(true);
+              })
+              .catch((e: Error) =>
+                Alert.alert('Download Failed', e.message ?? 'Could not download map tiles.')
+              );
+          },
+        },
+      ]
+    );
+  }, [currentRegion, mapPacks]);
+
+  const handleToggleOffline = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (!activePack) {
+      Alert.alert(
+        'No Offline Pack Here',
+        'There is no downloaded map pack covering this area. Zoom to a saved area or prepare one first.'
+      );
+      return;
+    }
+    setOfflineMode((m) => !m);
+  }, [activePack]);
 
   const acquireLocation = useCallback(async (): Promise<Coordinates | null> => {
     try {
@@ -485,7 +556,14 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
-      {MapView && (
+      {offlineMode && activePack ? (
+        <OfflineTileMap
+          pack={activePack}
+          pois={pois}
+          userLocation={userLocation}
+          onPoiPress={(p) => setSelectedPoi(p)}
+        />
+      ) : MapView ? (
         <MapView
           ref={mapRef}
           style={StyleSheet.absoluteFillObject}
@@ -502,6 +580,7 @@ export default function MapScreen() {
           showsMyLocationButton={false}
           showsCompass
           onLongPress={handleMapLongPress}
+          onRegionChangeComplete={(region: MapRegion) => setCurrentRegion(region)}
           mapType="standard"
         >
           {showMembers &&
@@ -572,7 +651,7 @@ export default function MapScreen() {
                 />
               ))}
         </MapView>
-      )}
+      ) : null}
 
       <View style={[styles.topBar, { borderColor: alertBorderColor }]}>
         <View style={styles.topBarRow}>
@@ -803,6 +882,66 @@ export default function MapScreen() {
               Routes ({routes.length})
             </Text>
             <View style={[styles.toggleDot, showRoutes && styles.toggleDotActive]} />
+          </TouchableOpacity>
+
+          <Text style={[styles.layerTitle, { marginTop: 14 }]}>OFFLINE MAPS</Text>
+
+          {activeDownload ? (
+            <View style={styles.packRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.packName}>
+                  Downloading… {Math.round((activeDownload[1].tilesDone / Math.max(1, activeDownload[1].tilesTotal)) * 100)}%
+                </Text>
+                <Text style={styles.packMeta}>
+                  {activeDownload[1].tilesDone}/{activeDownload[1].tilesTotal} tiles · {formatBytes(activeDownload[1].sizeBytes)}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => mapPacks.cancelDownload(activeDownload[0])}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <X color={Colors.statusRed} size={16} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.prepareBtn}
+              onPress={handlePrepareOfflineArea}
+              activeOpacity={0.7}
+            >
+              <Download color={Colors.white} size={14} />
+              <Text style={styles.prepareBtnText}>Prepare Offline Area</Text>
+            </TouchableOpacity>
+          )}
+
+          {mapPacks.packs.map((pack) => (
+            <View key={pack.id} style={styles.packRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.packName} numberOfLines={1}>
+                  {pack.name}
+                </Text>
+                <Text style={styles.packMeta}>
+                  {pack.tileCount} tiles · {formatBytes(pack.sizeBytes)}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => mapPacks.deletePack(pack.id)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Trash2 color={Colors.statusRed} size={16} />
+              </TouchableOpacity>
+            </View>
+          ))}
+
+          <TouchableOpacity
+            style={[styles.layerToggle, !activePack && { opacity: 0.5 }]}
+            onPress={handleToggleOffline}
+          >
+            <MapIcon color={offlineMode && activePack ? Colors.statusGreen : Colors.textMuted} size={18} />
+            <Text style={[styles.layerLabel, !offlineMode && styles.layerLabelOff]}>
+              Use Offline Tiles
+            </Text>
+            <View style={[styles.toggleDot, offlineMode && activePack && styles.toggleDotActive]} />
           </TouchableOpacity>
         </ScrollView>
       </Animated.View>
@@ -1117,6 +1256,40 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     fontSize: 13,
     fontWeight: '500' as const,
+  },
+  packRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  packName: {
+    color: Colors.textPrimary,
+    fontSize: 12,
+    fontWeight: '600' as const,
+  },
+  packMeta: {
+    color: Colors.textMuted,
+    fontSize: 10,
+    marginTop: 1,
+    fontVariant: ['tabular-nums'] as any,
+  },
+  prepareBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: Colors.oliveMuted,
+    borderRadius: 8,
+    paddingVertical: 9,
+    marginTop: 2,
+  },
+  prepareBtnText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontWeight: '700' as const,
   },
   layerLabelOff: {
     color: Colors.textMuted,

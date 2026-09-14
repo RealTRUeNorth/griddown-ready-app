@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @State private var appStore = AppStore()
     @State private var downloadManager = KiwixDownloadManager()
+    @State private var tileManager = TileDownloadManager()
 
     var body: some View {
         TabView {
@@ -64,6 +65,7 @@ struct ContentView: View {
         .tint(Theme.orange)
         .environment(appStore)
         .environment(downloadManager)
+        .environment(tileManager)
         .preferredColorScheme(.dark)
     }
 

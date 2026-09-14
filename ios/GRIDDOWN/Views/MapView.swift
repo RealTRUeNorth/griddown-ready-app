@@ -3,6 +3,7 @@ import MapKit
 
 struct MapView: View {
     @Environment(AppStore.self) var store
+    @Environment(TileDownloadManager.self) var tileManager
     @State private var cameraPosition: MapCameraPosition = .region(MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 39.8283, longitude: -98.5795),
         span: MKCoordinateSpan(latitudeDelta: 40, longitudeDelta: 40)
@@ -28,114 +29,176 @@ struct MapView: View {
     @State private var weatherIsCached = false
     @State private var weatherCachedAt: Date?
     @State private var showingNoRallyAlert = false
+    @State private var showOfflineTiles = false
+    @State private var cameraRegion: MKCoordinateRegion?
+    @State private var showingPrepareConfirm = false
+    @State private var pendingEstimate: TileDownloadManager.PackEstimate?
+    @State private var pendingRegion: MKCoordinateRegion?
+
+    private var offlinePack: MapPack? {
+        if let loc = userLocation {
+            return tileManager.packCovering(lat: loc.latitude, lon: loc.longitude)
+        }
+        if let region = cameraRegion {
+            return tileManager.packCovering(lat: region.center.latitude, lon: region.center.longitude)
+        }
+        return nil
+    }
+
+    private var controlsColumn: some View {
+        VStack(alignment: .trailing, spacing: 12) {
+            if showLayers {
+                layersPanel
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
+            VStack(spacing: 8) {
+                rallyButton
+                if showLayers {
+                    addPoiButton
+                    addRouteButton
+                }
+                layersToggleButton
+            }
+        }
+    }
+
+    private var rallyButton: some View {
+        Button {
+            navigateToNearestRally()
+        } label: {
+            Image(systemName: "flag.fill")
+                .font(.system(size: 18))
+                .foregroundStyle(.white)
+                .frame(width: 48, height: 48)
+                .background(Theme.statusGreen)
+                .overlay(Circle().stroke(Theme.border, lineWidth: 1))
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+        }
+    }
+
+    private var addPoiButton: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            showingAddPoi = true
+        } label: {
+            Image(systemName: "mappin.circle.badge.plus")
+                .font(.system(size: 20))
+                .foregroundStyle(Theme.orange)
+                .frame(width: 44, height: 44)
+                .background(Theme.bgCard)
+                .overlay(Circle().stroke(Theme.border, lineWidth: 1))
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+        }
+    }
+
+    private var addRouteButton: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            showingAddRoute = true
+        } label: {
+            Image(systemName: "route")
+                .font(.system(size: 20))
+                .foregroundStyle(Theme.oliveLight)
+                .frame(width: 44, height: 44)
+                .background(Theme.bgCard)
+                .overlay(Circle().stroke(Theme.border, lineWidth: 1))
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+        }
+    }
+
+    private var layersToggleButton: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                showLayers.toggle()
+            }
+        } label: {
+            Image(systemName: showLayers ? "xmark" : "square.3.layers.3d.fill")
+                .font(.system(size: 20))
+                .foregroundStyle(Theme.orange)
+                .frame(width: 48, height: 48)
+                .background(Theme.bgCard)
+                .overlay(Circle().stroke(Theme.border, lineWidth: 1))
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+        }
+    }
+
+    @ViewBuilder
+    private var mapContent: some View {
+        if showOfflineTiles, let pack = offlinePack {
+            OfflineTileMapView(
+                pack: pack,
+                tileDirectory: tileManager.tileDirectory(for: pack.id),
+                pois: store.pois,
+                userLocation: userLocation
+            ) { poi in
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    selectedPoi = poi
+                }
+            }
+            .ignoresSafeArea()
+        } else {
+            onlineMap
+        }
+    }
+
+    private var onlineMap: some View {
+        Map(position: $cameraPosition) {
+            if showInfrastructure {
+                ForEach(filteredInfrastructurePois) { poi in
+                    Annotation(poi.name, coordinate: CLLocationCoordinate2D(latitude: poi.coordinates.latitude, longitude: poi.coordinates.longitude)) {
+                        poiMarker(poi)
+                    }
+                }
+            }
+            if showPois {
+                ForEach(filteredCustomPois) { poi in
+                    Annotation(poi.name, coordinate: CLLocationCoordinate2D(latitude: poi.coordinates.latitude, longitude: poi.coordinates.longitude)) {
+                        poiMarker(poi)
+                    }
+                }
+            }
+            if showRoutes {
+                ForEach(store.routes) { route in
+                    if route.waypoints.count >= 2 {
+                        MapPolyline(coordinates: route.waypoints.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) })
+                            .stroke(Color(hexString: route.color) ?? Theme.orange, lineWidth: 3)
+                    }
+                }
+            }
+            if showMembers {
+                ForEach(store.members) { member in
+                    if let loc = member.location {
+                        Annotation(member.name, coordinate: CLLocationCoordinate2D(latitude: loc.latitude, longitude: loc.longitude)) {
+                            memberMarker(member)
+                        }
+                    }
+                }
+            }
+        }
+        .mapStyle(.standard(elevation: .realistic))
+        .mapControls {
+            MapCompass()
+            MapUserLocationButton()
+            MapScaleView()
+        }
+        .onMapCameraChange(frequency: .onEnd) { context in
+            cameraRegion = context.region
+        }
+    }
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            Map(position: $cameraPosition) {
-                if showInfrastructure {
-                    ForEach(filteredInfrastructurePois) { poi in
-                        Annotation(poi.name, coordinate: CLLocationCoordinate2D(latitude: poi.coordinates.latitude, longitude: poi.coordinates.longitude)) {
-                            poiMarker(poi)
-                        }
-                    }
-                }
-                if showPois {
-                    ForEach(filteredCustomPois) { poi in
-                        Annotation(poi.name, coordinate: CLLocationCoordinate2D(latitude: poi.coordinates.latitude, longitude: poi.coordinates.longitude)) {
-                            poiMarker(poi)
-                        }
-                    }
-                }
-                if showRoutes {
-                    ForEach(store.routes) { route in
-                        if route.waypoints.count >= 2 {
-                            MapPolyline(coordinates: route.waypoints.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) })
-                                .stroke(Color(hexString: route.color) ?? Theme.orange, lineWidth: 3)
-                        }
-                    }
-                }
-                if showMembers {
-                    ForEach(store.members) { member in
-                        if let loc = member.location {
-                            Annotation(member.name, coordinate: CLLocationCoordinate2D(latitude: loc.latitude, longitude: loc.longitude)) {
-                                memberMarker(member)
-                            }
-                        }
-                    }
-                }
-            }
-            .mapStyle(.standard(elevation: .realistic))
-            .mapControls {
-                MapCompass()
-                MapUserLocationButton()
-                MapScaleView()
-            }
+            mapContent
 
             // Layer drawer + add buttons
-            VStack(alignment: .trailing, spacing: 12) {
-                if showLayers {
-                    layersPanel
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
-                }
-                VStack(spacing: 8) {
-                    Button {
-                        navigateToNearestRally()
-                    } label: {
-                        Image(systemName: "flag.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(.white)
-                            .frame(width: 48, height: 48)
-                            .background(Theme.statusGreen)
-                            .overlay(Circle().stroke(Theme.border, lineWidth: 1))
-                            .clipShape(Circle())
-                            .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
-                    }
-                    if showLayers {
-                        Button {
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            showingAddPoi = true
-                        } label: {
-                            Image(systemName: "mappin.circle.badge.plus")
-                                .font(.system(size: 20))
-                                .foregroundStyle(Theme.orange)
-                                .frame(width: 44, height: 44)
-                                .background(Theme.bgCard)
-                                .overlay(Circle().stroke(Theme.border, lineWidth: 1))
-                                .clipShape(Circle())
-                                .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
-                        }
-                        Button {
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            showingAddRoute = true
-                        } label: {
-                            Image(systemName: "route")
-                                .font(.system(size: 20))
-                                .foregroundStyle(Theme.oliveLight)
-                                .frame(width: 44, height: 44)
-                                .background(Theme.bgCard)
-                                .overlay(Circle().stroke(Theme.border, lineWidth: 1))
-                                .clipShape(Circle())
-                                .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
-                        }
-                    }
-                    Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            showLayers.toggle()
-                        }
-                    } label: {
-                        Image(systemName: showLayers ? "xmark" : "square.3.layers.3d.fill")
-                            .font(.system(size: 20))
-                            .foregroundStyle(Theme.orange)
-                            .frame(width: 48, height: 48)
-                            .background(Theme.bgCard)
-                            .overlay(Circle().stroke(Theme.border, lineWidth: 1))
-                            .clipShape(Circle())
-                            .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
-                    }
-                }
-            }
-            .padding(20)
+            controlsColumn
+                .padding(20)
 
             // Search bar + results + weather banner (top area)
             VStack(spacing: 0) {
@@ -169,7 +232,7 @@ struct MapView: View {
             AddPoiView(existing: poi)
         }
         .confirmationDialog(
-            "Remove \"\(pendingDeletePoi?.name ?? "POI")\" from the map?",
+            deletePoiTitle,
             isPresented: Binding(
                 get: { pendingDeletePoi != nil },
                 set: { if !$0 { pendingDeletePoi = nil } }
@@ -194,6 +257,67 @@ struct MapView: View {
         } message: {
             Text("Add a rally point POI first to use rally navigation.")
         }
+        .alert("Prepare Offline Map Pack", isPresented: $showingPrepareConfirm) {
+            Button("Download") {
+                if let region = pendingRegion {
+                    tileManager.downloadPack(
+                        name: "Area — \(Date.now.formatted(date: .abbreviated, time: .omitted))",
+                        centerLat: region.center.latitude,
+                        centerLon: region.center.longitude,
+                        spanLat: region.span.latitudeDelta,
+                        spanLon: region.span.longitudeDelta
+                    )
+                }
+                pendingEstimate = nil
+                pendingRegion = nil
+            }
+            Button("Cancel", role: .cancel) {
+                pendingEstimate = nil
+                pendingRegion = nil
+            }
+        } message: {
+            Text(prepareAlertMessage)
+        }
+        .alert(
+            "Map Download Error",
+            isPresented: Binding(
+                get: { tileManager.lastError != nil },
+                set: { if !$0 { tileManager.clearError() } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(tileManager.lastError ?? "")
+        }
+    }
+
+    private var deletePoiTitle: String {
+        "Remove \"\(pendingDeletePoi?.name ?? "POI")\" from the map?"
+    }
+
+    private var prepareAlertMessage: String {
+        let count = pendingEstimate?.tileCount ?? 0
+        let size = TileDownloadManager.bytesLabel(pendingEstimate?.sizeBytes ?? 0)
+        return "\(count) tiles (~\(size)) for the current view. Works with no signal once saved."
+    }
+
+    private func prepareOfflineArea() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        let region = cameraRegion ?? MKCoordinateRegion(
+            center: CLLocationCoordinate2D(
+                latitude: userLocation?.latitude ?? 39.8283,
+                longitude: userLocation?.longitude ?? -98.5795
+            ),
+            span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)
+        )
+        pendingRegion = region
+        pendingEstimate = tileManager.estimate(
+            centerLat: region.center.latitude,
+            centerLon: region.center.longitude,
+            spanLat: region.span.latitudeDelta,
+            spanLon: region.span.longitudeDelta
+        )
+        showingPrepareConfirm = true
     }
 
     // MARK: - Search
@@ -608,12 +732,134 @@ struct MapView: View {
             layerToggle("Custom POIs", icon: "mappin.circle.fill", isOn: $showPois)
             layerToggle("Routes", icon: "route", isOn: $showRoutes)
             layerToggle("Members", icon: "person.2.fill", isOn: $showMembers)
+
+            offlineMapsSection
         }
         .padding(16)
         .background(Theme.bgCard)
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 1))
         .clipShape(.rect(cornerRadius: 14))
         .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+    }
+
+    @ViewBuilder
+    private var offlineMapsSection: some View {
+        Divider().overlay(Theme.border).padding(.vertical, 10)
+        Text("OFFLINE MAPS")
+            .font(.system(size: 11, weight: .bold))
+            .tracking(2)
+            .foregroundStyle(Theme.textMuted)
+            .padding(.bottom, 6)
+        if tileManager.isDownloading {
+            offlineDownloadRow
+        } else {
+            prepareOfflineButton
+        }
+        ForEach(tileManager.packs) { pack in
+            packRow(pack)
+        }
+        offlineTilesToggle
+    }
+
+    @ViewBuilder
+    private var offlineDownloadRow: some View {
+        HStack(spacing: 10) {
+            ProgressView()
+                .tint(Theme.orange)
+                .scaleEffect(0.8)
+            let percent = tileManager.tilesTotal > 0
+                ? Int((Double(tileManager.tilesDone) / Double(tileManager.tilesTotal) * 100).rounded())
+                : 0
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Downloading… \(percent)%")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                Text("\(tileManager.tilesDone)/\(tileManager.tilesTotal) tiles · \(TileDownloadManager.bytesLabel(tileManager.downloadedBytes))")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Theme.textMuted)
+            }
+            Spacer()
+            Button {
+                tileManager.cancelDownload()
+            } label: {
+                Image(systemName: "stop.fill")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Theme.statusRed)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.vertical, 6)
+    }
+
+    private var prepareOfflineButton: some View {
+        Button {
+            prepareOfflineArea()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "square.and.arrow.down.fill")
+                    .font(.system(size: 12, weight: .bold))
+                Text("Prepare Offline Area")
+                    .font(.system(size: 12, weight: .bold))
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(Theme.olive)
+            .clipShape(.rect(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+        .padding(.vertical, 4)
+    }
+
+    private func packRow(_ pack: MapPack) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "square.stack.3d.down.forward")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.statusGreen)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(pack.name)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(1)
+                Text("\(pack.tileCount) tiles · \(TileDownloadManager.bytesLabel(pack.sizeBytes))")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Theme.textMuted)
+            }
+            Spacer()
+            Button {
+                tileManager.deletePack(pack)
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.statusRed)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.vertical, 5)
+    }
+
+    private var offlineTilesToggle: some View {
+        let isOn = showOfflineTiles && offlinePack != nil
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            showOfflineTiles.toggle()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "map.fill")
+                    .font(.system(size: 16))
+                    .foregroundStyle(isOn ? Theme.statusGreen : Theme.orange)
+                Text(isOn ? "Offline Tiles: ON" : "Use Offline Tiles")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(offlinePack != nil ? Theme.textPrimary : Theme.textMuted)
+                Spacer()
+                Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 16))
+                    .foregroundStyle(isOn ? Theme.statusGreen : Theme.border)
+            }
+            .padding(.vertical, 6)
+        }
+        .buttonStyle(.plain)
+        .disabled(offlinePack == nil)
     }
 
     private func layerToggle(_ label: String, icon: String, isOn: Binding<Bool>) -> some View {

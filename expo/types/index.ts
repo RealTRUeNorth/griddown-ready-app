@@ -176,6 +176,7 @@ export interface AppData {
   alertLevel: AlertLevel;
   groupName: string;
   checkInIntervalHours?: number;
+  remindersEnabled?: boolean;
   members: GroupMember[];
   supplies: SupplyItem[];
   checklists: Checklist[];

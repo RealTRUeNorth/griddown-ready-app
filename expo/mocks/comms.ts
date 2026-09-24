@@ -150,6 +150,23 @@ export const defaultCommsProtocols: CommsProtocol[] = [
       'Test with low power first, increase only if needed',
     ],
   },
+  {
+    id: 'proto6',
+    title: 'Brevity Codes & Prowords',
+    description: 'Standard reference card — phonetic alphabet and prowords for short, unambiguous transmissions',
+    steps: [
+      'Phonetic alphabet: Alpha Bravo Charlie Delta Echo Foxtrot Golf Hotel India Juliett Kilo Lima Mike November Oscar Papa Quebec Romeo Sierra Tango Uniform Victor Whiskey X-ray Yankee Zulu',
+      'Numbers: speak digit by digit — "one-two-three", decimals as "point" ("one-two-point-five")',
+      'OVER = my transmission is ended, respond',
+      'OUT = conversation is ended (never say "over and out")',
+      'ROGER = received and understood · WILCO = received and will comply',
+      'SAY AGAIN = repeat your last transmission · I SAY AGAIN = I am repeating',
+      'STANDBY = wait, I will call you back · WAIT OUT = lengthy pause expected',
+      'BREAK = separating parts of a message or ending one message to start another',
+      'NEGATIVE / AFFIRMATIVE = no / yes',
+      'Readability scale: 1 = unreadable, 3 = readable with difficulty, 5 = perfectly readable',
+    ],
+  },
 ];
 
 export const BAND_INFO: Record<string, { label: string; range: string; license: string; color: string }> = {

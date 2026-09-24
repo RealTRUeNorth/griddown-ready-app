@@ -23,42 +23,45 @@ The app provides a unified tactical interface for managing your group's readines
 ## Features
 
 ### Status Dashboard
-- Real-time alert level indicator (Green / Amber / Red)
+- Real-time alert level indicator (Green / Amber / Red) with one-tap switching
 - Aggregate readiness stats — members ready, supplies tracked, low-stock alerts, checklist completion
-- Quick-access grid to all operational modules
-- Checklist completion progress at a glance
+- Per-member check-in clock with a configurable cadence (2–24h): due-soon at 75% of the interval, overdue at 100%
+- Inventory alert feed (expired / expiring soon / low stock) that jumps straight into the item
+- Quick-access grid resolved dynamically to the right checklists and guides
 
 ### Prep Hub
-- **Weather** — Live conditions via Open-Meteo API (no API key needed), current temperature, feels-like, humidity, wind, pressure, UV index, visibility, precipitation. Hourly + 7-day forecasts. Operational impact assessment. CoreLocation integration.
-- **Supplies** — Full inventory management with 9 categories (water, food, medical, tools, comms, shelter, clothing, documents, other). Quantity tracking with minimum-stock thresholds and low-stock warnings. Expiration date tracking. Real-time search filtering. Category filter chips. Stats bar (total items, categories, low count).
-- **Checklists** — Pre-loaded operational checklists with progress bars. Tap to expand, check off items, track completion percentage.
+- **Weather** — Live conditions via Open-Meteo API (no API key needed): temperature, feels-like, humidity, wind, pressure, UV index, visibility, precipitation. Hourly + 7-day forecasts. Operational impact assessment. The last successful fetch is cached locally and shown with an OFFLINE chip when the network is gone. Weather-triggered resource suggestions (rain → water collection, storms → shelter) can be added as POIs in one tap.
+- **Supplies** — Full inventory management with 9 categories (water, food, medical, tools, comms, shelter, clothing, documents, other). Quantity tracking with minimum-stock thresholds and low-stock warnings. Expiration date tracking with 30-day expiry alerts. Real-time search filtering. Category filter chips. Ships with a 14-item starter inventory (including one expired and one expiring-soon item so the alert system demos itself).
+- **Checklists** — 8 pre-loaded operational checklists with progress bars: Bug-Out Bag, Shelter-In-Place, Comms Plan, Vehicle Readiness, First Aid Kit, Water Storage, Sanitation Kit, Generator & Power.
 
 ### Tactical Map
-- Interactive map with custom POI annotations (13 categories: water, shelter, medical, supply cache, rally point, hazard, comms, gas station, hospital, pharmacy, police, fire station, other)
+- Interactive map with custom POI annotations (14 categories: water, shelter, medical, supply cache, rally point, hazard, comms, gas station, hospital, pharmacy, police, fire station, weather resource, other)
 - Custom route plotting with colored polylines and waypoints
-- Layer toggles for POIs, routes, and member locations
-- Add POI and add route flows from the map layer drawer
-- User location tracking
-- Infrastructure POIs pre-loaded (hospitals, police, fire stations, pharmacies, gas stations)
+- Layer toggles for POIs, routes, and member locations; search filters map markers too
+- **Offline map packs** — download the current view as an OpenStreetMap tile pack (zooms 12–15, ≤6,000 tiles, size estimated before you confirm). When "Use Offline Tiles" is on, the map renders 100% from local storage with zero network: pan/zoom, POI markers with category colors, and your location dot all work with no signal. Live download progress, cancel, delete, and automatic pruning of broken packs.
+- Location-aware first launch: tactical POIs and routes are seeded around your actual location (rally points, water source, cache, comms point, hazard) instead of the bundled St. Louis demo data.
 
 ### Comms
 - **Channels** — Manage comms channels across 9 bands (FRS, GMRS, MURS, CB, VHF Marine, HAM VHF, HAM UHF, HF, Custom). Track frequency, mode (simplex/duplex/mesh/repeater), CTCSS tones, power, purpose. Primary channel designation.
 - **Repeaters** — Repeater station registry with input/output frequencies, offset, CTCSS, location, and range.
-- **Protocols** — Expandable operational comms protocol cards with step-by-step procedures.
+- **Protocols** — 6 expandable operational protocol cards with step-by-step procedures, including a brevity codes & prowords reference card (phonetic alphabet, OVER/OUT, SAY AGAIN, readability scale).
 - **Reference** — Quick-reference band chart with frequency ranges, power limits, and use cases.
 
 ### Intel
-- **Group Roster** — Member management with roles, skills, status tracking (ready / unavailable / unknown), phone numbers, and notes. Real-time search by name. Readiness stats.
-- **Kiwix Offline Library** — Catalog of downloadable offline reference resources (medical, survival, homesteading, comms, engineering, agriculture, security, and more). Save resources to your library. Search and category filtering.
-- **Field Guides** — Pre-loaded emergency reference cards organized by category. Multi-section guides with detailed content.
+- **Group Roster** — Member management with roles, skills, status tracking (ready / unavailable / unknown), phone numbers, notes, and per-member check-in history.
+- **Kiwix Offline Library** — 15 real ZIM resources with genuine full-file downloads, progress tracking, and cancel (WikiMed medical encyclopedias, Outdoors & HAM & Information-Security Stack Exchanges, Appropedia, iFixit, Wikipedia topic packs, Wikibooks, Wikispecies, TED, Wikivoyage, Wiktionary). All URLs and sizes verified against download.kiwix.org. Search and category filtering.
+- **Field Guides** — 8 pre-loaded multi-section guides: Water Purification, First Aid Essentials, Emergency Communications, Shelter & Warmth, Food Preservation, Sanitation & Hygiene, Backup Power, Security & Watch Protocols.
+- **Ops Backup** — export the entire ops kit (members, supplies, checklists, POIs, routes, comms, library) through the system share sheet — Files, Messages, AirDrop, mail — with a clipboard fallback, and import it back with a confirmation dialog. Same JSON format on both platforms.
+
+### Reminders (optional)
+- Local notifications only — nothing leaves the device and there is no push server
+- A repeating check-in reminder follows the group cadence setting
+- Supply expiry alerts fire 30 days before each expiration date
+- Enable in Settings → Reminders; changing the cadence or editing supplies reschedules automatically
 
 ## Screenshots
 
 > Add screenshots to a `/docs/screenshots/` directory and reference them here.
-
-| Status | Map | Comms | Supplies |
-|--------|-----|-------|----------|
-| _placeholder_ | _placeholder_ | _placeholder_ | _placeholder_ |
 
 ## Tech Stack
 
@@ -71,8 +74,10 @@ The app provides a unified tactical interface for managing your group's readines
 | Language | TypeScript 5.9 |
 | State | React Query + Context (via `@nkzw/create-context-hook`) |
 | Persistence | AsyncStorage (local, offline-first) |
-| Maps | `react-native-maps` (lazy-loaded on native) |
+| Maps | `react-native-maps` (lazy-loaded on native) + custom offline tile renderer |
 | Location | `expo-location` (lazy-loaded on native) |
+| Offline content | Kiwix ZIM downloads + OSM tile packs |
+| Notifications | `expo-notifications` (local scheduling) |
 | Icons | `lucide-react-native` |
 | Haptics | `expo-haptics` |
 | Package Manager | Bun |
@@ -85,8 +90,10 @@ The app provides a unified tactical interface for managing your group's readines
 | Language | Swift 6 (Approachable Concurrency) |
 | State | `@Observable` macro (Swift Observation) |
 | Persistence | `UserDefaults` |
-| Maps | MapKit (native `Map` API, `MapCameraPosition`, `Annotation`, `MapPolyline`) |
+| Maps | MapKit (native `Map` API) + `MKTileOverlay` offline tile renderer |
 | Location | CoreLocation |
+| Offline content | Kiwix ZIM downloads (`URLSession`) + OSM tile packs |
+| Notifications | `UserNotifications` (local scheduling) |
 | Icons | SF Symbols |
 | Haptics | `UIImpactFeedbackGenerator`, `UINotificationFeedbackGenerator` |
 | Navigation | `NavigationStack` + type-safe `NavRoute` enum |
@@ -105,9 +112,9 @@ GRIDDOWN/
 │   │   ├── (tabs)/                # 5-tab navigation
 │   │   │   ├── (home)/            # Status dashboard
 │   │   │   ├── prep/              # Prep hub → weather, supplies, checklists
-│   │   │   ├── map/               # Tactical map
+│   │   │   ├── map/               # Tactical map + offline tile packs
 │   │   │   ├── comms/             # Comms (channels, repeaters, protocols, reference)
-│   │   │   ├── intel/             # Intel hub → group, library, guides
+│   │   │   ├── intel/             # Intel hub → group, library, guides, backup
 │   │   │   └── _layout.tsx        # Tab bar configuration
 │   │   ├── add-member.tsx         # Modal: add group member
 │   │   ├── add-supply.tsx         # Modal: add supply item
@@ -115,15 +122,19 @@ GRIDDOWN/
 │   │   ├── add-route.tsx          # Modal: add map route
 │   │   ├── add-channel.tsx        # Modal: add comms channel
 │   │   ├── add-repeater.tsx       # Modal: add repeater
-│   │   ├── member-detail.tsx      # Member detail screen
-│   │   ├── resource-detail.tsx    # Kiwix resource detail
+│   │   ├── member-detail.tsx      # Member detail + check-in clock
+│   │   ├── resource-detail.tsx    # Kiwix resource detail + download
 │   │   ├── checklist-detail.tsx   # Checklist detail
 │   │   ├── guide-detail.tsx       # Field guide detail
+│   │   ├── settings.tsx           # Group name, cadence, reminders
 │   │   └── +not-found.tsx         # 404 fallback
 │   ├── assets/                    # App icons, splash, images
+│   ├── components/                # OfflineTileMap, KiwixDownloadControl, SwipeableRow, WeatherSuggestionsBanner
 │   ├── constants/                 # Theme colors, map helpers
-│   ├── mocks/                     # Seed data (members, checklists, comms, POIs, guides, Kiwix)
-│   ├── providers/                 # AppProvider — central state + AsyncStorage
+│   ├── mocks/                     # Seed data (members, checklists, comms, POIs, guides, supplies, Kiwix)
+│   ├── providers/                 # AppProvider, DownloadProvider, MapPacksProvider
+│   ├── services/                  # Weather suggestions engine + cache
+│   ├── utils/                     # Check-in math, supply alerts, tile math, ops backup, notifications
 │   ├── types/                     # TypeScript type definitions
 │   ├── app.json                   # Expo configuration
 │   └── package.json               # Dependencies & scripts
@@ -133,19 +144,22 @@ GRIDDOWN/
 │       ├── GRIDDOWNApp.swift      # @main entry point
 │       ├── ContentView.swift      # TabView + NavigationStack routing
 │       ├── Theme.swift            # Color palette (Color(hex:) extension)
-│       ├── Models/                # AppModels.swift + MockData.swift
-│       ├── Services/              # AppStore.swift (@Observable, UserDefaults)
+│       ├── Models/                # AppModels.swift + MapPack.swift + MockData.swift
+│       ├── Services/              # AppStore, TileDownloadManager, KiwixDownloadManager,
+│       │                          # NotificationsService, WeatherCache, SupplyAlerts, CheckIn…
 │       ├── Views/                 # All SwiftUI views
 │       │   ├── StatusView.swift
 │       │   ├── PrepView.swift
 │       │   ├── WeatherView.swift
 │       │   ├── SuppliesView.swift
 │       │   ├── ChecklistsView.swift
-│       │   ├── MapView.swift
+│       │   ├── MapView.swift + OfflineTileMapView.swift
 │       │   ├── CommsView.swift
 │       │   ├── IntelView.swift
+│       │   ├── SettingsView.swift
 │       │   ├── DetailView.swift
 │       │   ├── AddForms.swift
+│       │   ├── DownloadControl.swift
 │       │   └── SharedComponents.swift
 │       └── Assets.xcassets/       # App icon, accent color
 │
@@ -158,7 +172,6 @@ GRIDDOWN/
 - **Node.js** 18+ (recommended via [nvm](https://github.com/nvm-sh/nvm))
 - **Bun** 1.1+ ([install](https://bun.sh/docs/installation))
 - **Xcode** 16+ (for iOS native app development & simulator)
-- **CocoaPods** (if building iOS native modules)
 - **Expo Go** app on your physical device (for testing) — [iOS](https://apps.apple.com/app/expo-go/id982107779) / [Android](https://play.google.com/store/apps/details?id=host.exp.exponent)
 
 ## Installation
@@ -277,13 +290,16 @@ These are configured via `INFOPLIST_KEY_*` entries in `project.pbxproj` (no sepa
 ## Data & Persistence
 
 ### Expo App
-All app data is stored locally via `AsyncStorage` through a centralized `AppProvider` context hook. Data includes: alert level, group name, members, supplies, checklists, POIs, routes, comms channels, repeaters, and saved Kiwix resources. The app syncs React Query for server state with local persistence — no data is lost between sessions.
+All app data is stored locally via `AsyncStorage` through a centralized `AppProvider` context hook. Data includes: alert level, group name, check-in cadence, reminder settings, members, supplies, checklists, POIs, routes, comms channels, repeaters, and saved Kiwix resources. Seed content (new checklists, supplies, POIs) is merged into existing installs on version bumps, so updates never wipe user data. Downloaded ZIM files and offline map packs live in the app's documents directory.
 
 ### iOS App
-All app data is stored in `UserDefaults` through an `@Observable AppStore` class. The store provides full CRUD operations for all entity types, computed statistics (supply stats, readiness counts), and automatic persistence on every mutation.
+All app data is stored in `UserDefaults` through an `@Observable AppStore` class. The store provides full CRUD operations for all entity types, computed statistics (supply stats, readiness counts), and automatic persistence on every mutation. Local notifications are scheduled through `UserNotifications` and rescheduled on relevant mutations.
+
+### Ops Backups
+Export produces a versioned `griddown-ops-backup` JSON (identical format on both platforms) shared via the system share sheet on mobile or copied to the clipboard on web. Import accepts either a wrapped backup file or raw app-data JSON and replaces all data after confirmation.
 
 ### Weather API
-Weather data is fetched from [Open-Meteo](https://open-meteo.com/), a free open-source weather API that requires no API key or authentication. The API provides current conditions, hourly forecasts, and daily forecasts. If the device is offline, the app gracefully shows cached or error states.
+Weather data is fetched from [Open-Meteo](https://open-meteo.com/), a free open-source weather API that requires no API key or authentication. The API provides current conditions, hourly forecasts, and daily forecasts. If the device is offline, the app gracefully shows the cached snapshot with an OFFLINE chip, or an error state if nothing is cached.
 
 ## Key Design Decisions
 

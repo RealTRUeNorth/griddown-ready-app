@@ -6,14 +6,17 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
+  Platform,
+  Alert,
 } from 'react-native';
 import { Stack } from 'expo-router';
-import { Users, Clock, Database, Check } from 'lucide-react-native';
+import { Users, Clock, Database, Check, Bell } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
 import { CHECK_IN_INTERVAL_OPTIONS } from '@/utils/checkin';
 import { backupCounts } from '@/utils/opsBackup';
+import { ensureNotificationPermission, isNotificationsSupported } from '@/utils/notifications';
 
 export default function SettingsScreen() {
   const {
@@ -21,10 +24,31 @@ export default function SettingsScreen() {
     updateGroupName,
     checkInIntervalHours,
     updateCheckInInterval,
+    remindersEnabled,
+    updateRemindersEnabled,
     currentSnapshot,
   } = useAppData();
 
   const [nameDraft, setNameDraft] = useState<string>(groupName);
+
+  const handleToggleReminders = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS === 'web' || !isNotificationsSupported()) {
+      Alert.alert('Not Available', 'Reminders work on the mobile apps.');
+      return;
+    }
+    if (!remindersEnabled) {
+      const granted = await ensureNotificationPermission();
+      if (!granted) {
+        Alert.alert(
+          'Permission Needed',
+          'Enable notifications for GRIDDOWN in system settings to use reminders.'
+        );
+        return;
+      }
+    }
+    updateRemindersEnabled(!remindersEnabled);
+  }, [remindersEnabled, updateRemindersEnabled]);
 
   const handleSaveName = useCallback(() => {
     const trimmed = nameDraft.trim();
@@ -106,6 +130,29 @@ export default function SettingsScreen() {
               );
             })}
           </View>
+        </View>
+
+        <Text style={styles.sectionLabel}>REMINDERS</Text>
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Bell color={Colors.orangeLight} size={16} />
+            <Text style={styles.cardTitle}>Check-In & Expiry Alerts</Text>
+          </View>
+          <Text style={styles.hint}>
+            A repeating check-in reminder follows your cadence above. Supply alerts fire 30 days
+            before expiration dates. All notifications are local — nothing leaves this device.
+          </Text>
+          <TouchableOpacity
+            style={styles.toggleRow}
+            onPress={() => void handleToggleReminders()}
+            activeOpacity={0.7}
+            testID="reminders-toggle"
+          >
+            <Text style={[styles.toggleLabel, !remindersEnabled && styles.toggleLabelOff]}>
+              {remindersEnabled ? 'Reminders On' : 'Reminders Off'}
+            </Text>
+            <View style={[styles.toggleDot, remindersEnabled && styles.toggleDotActive]} />
+          </TouchableOpacity>
         </View>
 
         <Text style={styles.sectionLabel}>ABOUT</Text>
@@ -227,6 +274,38 @@ const styles = StyleSheet.create({
   },
   chipTextActive: {
     color: Colors.white,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.bg,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginTop: 12,
+  },
+  toggleLabel: {
+    color: Colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '700' as const,
+  },
+  toggleLabelOff: {
+    color: Colors.textMuted,
+  },
+  toggleDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: Colors.bgElevated,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  toggleDotActive: {
+    backgroundColor: Colors.statusGreen,
+    borderColor: Colors.statusGreen,
   },
   aboutLine: {
     color: Colors.textSecondary,

@@ -449,6 +449,7 @@ struct AppData: Codable, Sendable {
     var alertLevel: AlertLevel = .green
     var groupName: String = "My Group"
     var checkInIntervalHours: Int = 6
+    var remindersEnabled: Bool = false
     var members: [GroupMember] = []
     var supplies: [SupplyItem] = []
     var checklists: [Checklist] = []
@@ -467,6 +468,7 @@ extension AppData {
         alertLevel = try container.decodeIfPresent(AlertLevel.self, forKey: .alertLevel) ?? .green
         groupName = try container.decodeIfPresent(String.self, forKey: .groupName) ?? "My Group"
         checkInIntervalHours = try container.decodeIfPresent(Int.self, forKey: .checkInIntervalHours) ?? 6
+        remindersEnabled = try container.decodeIfPresent(Bool.self, forKey: .remindersEnabled) ?? false
         members = try container.decodeIfPresent([GroupMember].self, forKey: .members) ?? []
         supplies = try container.decodeIfPresent([SupplyItem].self, forKey: .supplies) ?? []
         checklists = try container.decodeIfPresent([Checklist].self, forKey: .checklists) ?? []
@@ -500,6 +502,7 @@ struct OpsBackupData: Codable, Sendable {
     var alertLevel: AlertLevel?
     var groupName: String?
     var checkInIntervalHours: Int?
+    var remindersEnabled: Bool?
     var members: [GroupMember]?
     var supplies: [SupplyItem]?
     var checklists: [Checklist]?
@@ -512,6 +515,6 @@ struct OpsBackupData: Codable, Sendable {
     var hasContent: Bool {
         alertLevel != nil || members != nil || supplies != nil || checklists != nil ||
         pois != nil || routes != nil || commsChannels != nil || commsRepeaters != nil ||
-        kiwixLibrary != nil
+        kiwixLibrary != nil || remindersEnabled != nil
     }
 }

@@ -24,6 +24,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
+import { defaultGuides } from '@/mocks/guides';
 import { AlertLevel, SupplyItem } from '@/types';
 import { getInventoryAlerts } from '@/utils/supplyAlerts';
 import {
@@ -100,6 +101,12 @@ export default function DashboardScreen() {
   const totalChecked = checklistStats.reduce((sum, s) => sum + s.completed, 0);
   const totalItems = checklistStats.reduce((sum, s) => sum + s.total, 0);
   const overallPercent = totalItems > 0 ? Math.round((totalChecked / totalItems) * 100) : 0;
+
+  // Quick actions resolve seed IDs dynamically so they survive seed data changes
+  const bugOutChecklist = checklists.find((c) => /bug.?out/i.test(c.title)) ?? checklists[0];
+  const commsChecklist = checklists.find((c) => /comms/i.test(c.title)) ?? checklists[1];
+  const securityGuide = defaultGuides.find((g) => /security/i.test(g.title)) ?? defaultGuides[0];
+  const firstAidGuide = defaultGuides.find((g) => /first aid/i.test(g.title)) ?? defaultGuides[1];
 
   const handleAlertChange = useCallback(
     (level: AlertLevel) => {
@@ -181,7 +188,7 @@ export default function DashboardScreen() {
         <StatCard
           icon={<BookOpen color={Colors.amberLight} size={20} />}
           label="GUIDES"
-          value="6"
+          value={`${defaultGuides.length}`}
           sublabel="Available"
           onPress={() => router.push('/(tabs)/intel/guides' as Href)}
         />
@@ -255,26 +262,34 @@ export default function DashboardScreen() {
 
       <Text style={styles.sectionTitle}>QUICK ACCESS</Text>
       <View style={styles.quickGrid}>
-        <QuickAction
-          icon={<Zap color={Colors.orange} size={22} />}
-          label="Bug-Out Bag"
-          onPress={() => router.push({ pathname: '/checklist-detail', params: { id: 'cl1' } } as unknown as Href)}
-        />
-        <QuickAction
-          icon={<Radio color={Colors.orange} size={22} />}
-          label="Comms Plan"
-          onPress={() => router.push({ pathname: '/checklist-detail', params: { id: 'cl3' } } as unknown as Href)}
-        />
-        <QuickAction
-          icon={<Shield color={Colors.orange} size={22} />}
-          label="Security"
-          onPress={() => router.push({ pathname: '/guide-detail', params: { id: 'g6' } } as unknown as Href)}
-        />
-        <QuickAction
-          icon={<AlertTriangle color={Colors.orange} size={22} />}
-          label="First Aid"
-          onPress={() => router.push({ pathname: '/guide-detail', params: { id: 'g2' } } as unknown as Href)}
-        />
+        {bugOutChecklist && (
+          <QuickAction
+            icon={<Zap color={Colors.orange} size={22} />}
+            label="Bug-Out Bag"
+            onPress={() => router.push({ pathname: '/checklist-detail', params: { id: bugOutChecklist.id } } as unknown as Href)}
+          />
+        )}
+        {commsChecklist && (
+          <QuickAction
+            icon={<Radio color={Colors.orange} size={22} />}
+            label="Comms Plan"
+            onPress={() => router.push({ pathname: '/checklist-detail', params: { id: commsChecklist.id } } as unknown as Href)}
+          />
+        )}
+        {securityGuide && (
+          <QuickAction
+            icon={<Shield color={Colors.orange} size={22} />}
+            label="Security"
+            onPress={() => router.push({ pathname: '/guide-detail', params: { id: securityGuide.id } } as unknown as Href)}
+          />
+        )}
+        {firstAidGuide && (
+          <QuickAction
+            icon={<AlertTriangle color={Colors.orange} size={22} />}
+            label="First Aid"
+            onPress={() => router.push({ pathname: '/guide-detail', params: { id: firstAidGuide.id } } as unknown as Href)}
+          />
+        )}
       </View>
 
       {checklists.length > 0 && (

@@ -7,6 +7,8 @@ import {
   Pressable,
   Animated,
   Alert,
+  Platform,
+  Share,
 } from 'react-native';
 import { router, Href } from 'expo-router';
 import {
@@ -89,14 +91,34 @@ export default function IntelHubScreen() {
   const readyMembers = members.filter((m) => m.status === 'ready').length;
 
   const handleExportBackup = useCallback(async () => {
+    const json = exportOpsBackup();
+    const counts = backupCounts(currentSnapshot());
+    const countsText = `${counts.members} members · ${counts.supplies} supplies · ${counts.pois} POIs · ${counts.routes} routes · ${counts.channels} channels · ${counts.repeaters} repeaters`;
+
+    // Prefer the system share sheet so the backup can go anywhere — Files,
+    // Messages, AirDrop, mail. Dismissing falls through to clipboard.
+    if (Platform.OS !== 'web') {
+      try {
+        const result = await Share.share({
+          title: 'GRIDDOWN Ops Backup',
+          message: json,
+        });
+        if (result.action !== Share.dismissedAction) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+        return;
+      } catch (e) {
+        console.log('Share-sheet export failed, falling back to clipboard:', e);
+      }
+    }
+
+    // Fallback: clipboard copy (web, or sharing unavailable)
     try {
-      const json = exportOpsBackup();
       await Clipboard.setStringAsync(json);
-      const counts = backupCounts(currentSnapshot());
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
         'Ops Backup Copied',
-        `Full ops kit copied to clipboard:\n\n${counts.members} members · ${counts.supplies} supplies · ${counts.pois} POIs · ${counts.routes} routes · ${counts.channels} channels · ${counts.repeaters} repeaters\n\nPaste it into a note, message, or another device to store it.`
+        `Full ops kit copied to clipboard:\n\n${countsText}\n\nPaste it into a note, message, or another device to store it.`
       );
     } catch (e) {
       console.log('Export backup failed:', e);

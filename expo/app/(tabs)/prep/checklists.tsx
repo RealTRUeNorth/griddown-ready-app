@@ -15,6 +15,10 @@ import {
   Home,
   Radio,
   Car,
+  BriefcaseMedical,
+  Droplets,
+  ShowerHead,
+  PlugZap,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
@@ -24,6 +28,10 @@ const iconMap: Record<string, React.ReactNode> = {
   Home: <Home color={Colors.orange} size={22} />,
   Radio: <Radio color={Colors.orange} size={22} />,
   Car: <Car color={Colors.orange} size={22} />,
+  BriefcaseMedical: <BriefcaseMedical color={Colors.orange} size={22} />,
+  Droplets: <Droplets color={Colors.orange} size={22} />,
+  ShowerHead: <ShowerHead color={Colors.orange} size={22} />,
+  PlugZap: <PlugZap color={Colors.orange} size={22} />,
 };
 
 export default function ChecklistsScreen() {

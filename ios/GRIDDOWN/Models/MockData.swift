@@ -6,22 +6,27 @@ enum MockData {
             id: "m1", name: "Team Lead", role: "Leader",
             skills: ["Navigation", "First Aid", "Comms"],
             status: .ready,
+            phone: "555-0101",
             notes: "Primary decision maker. HAM radio licensed."
         ),
         GroupMember(
             id: "m2", name: "Medic", role: "Medical",
             skills: ["First Aid", "Trauma Care", "Herbalism"],
             status: .ready,
+            phone: "555-0102",
             notes: "EMT certified. Maintains medical supplies."
         ),
         GroupMember(
             id: "m3", name: "Scout", role: "Recon",
             skills: ["Navigation", "Tracking", "Hunting"],
             status: .unknown,
+            phone: "555-0103",
             notes: "Former military. Wilderness survival expert."
         ),
     ]
 
+    /// Seed inventory — deliberately includes one expired item and one
+    /// expiring soon so the alert system demos itself on first launch.
     static let seedSupplies: [SupplyItem] = [
         SupplyItem(
             id: "s_water_1", name: "Bottled Water", category: .water,
@@ -29,9 +34,34 @@ enum MockData {
             notes: "Garage rack — 6-pack cases"
         ),
         SupplyItem(
+            id: "s_water_2", name: "Sawyer Squeeze Filter", category: .water,
+            quantity: 2, unit: "units", minimumQuantity: 1,
+            notes: "Backflush kit taped to each filter"
+        ),
+        SupplyItem(
             id: "s_food_1", name: "MRE Cases", category: .food,
             quantity: 4, unit: "cases", minimumQuantity: 2,
             expirationDate: "2026-09-15", notes: "Hall closet, top shelf"
+        ),
+        SupplyItem(
+            id: "s_food_2", name: "White Rice", category: .food,
+            quantity: 25, unit: "lbs", minimumQuantity: 10,
+            expirationDate: "2028-01", notes: "Food-grade buckets with gamma lids"
+        ),
+        SupplyItem(
+            id: "s_food_3", name: "Pinto Beans", category: .food,
+            quantity: 20, unit: "lbs", minimumQuantity: 10,
+            expirationDate: "2028-05", notes: "Buckets with oxygen absorbers"
+        ),
+        SupplyItem(
+            id: "s_food_4", name: "Canned Soup", category: .food,
+            quantity: 24, unit: "cans", minimumQuantity: 12,
+            expirationDate: "2027-06", notes: "Pantry shelf — rotate FIFO"
+        ),
+        SupplyItem(
+            id: "s_food_5", name: "Rolled Oats", category: .food,
+            quantity: 12, unit: "lbs", minimumQuantity: 6,
+            expirationDate: "2027-11", notes: "Mylar bags inside 5-gal bucket"
         ),
         SupplyItem(
             id: "s_med_1", name: "Ibuprofen", category: .medical,
@@ -39,9 +69,34 @@ enum MockData {
             expirationDate: "2026-03-01", notes: "Med kit — expired, replace"
         ),
         SupplyItem(
-            id: "s_food_2", name: "White Rice", category: .food,
-            quantity: 25, unit: "lbs", minimumQuantity: 10,
-            expirationDate: "2028-01", notes: "Food-grade buckets with gamma lids"
+            id: "s_med_2", name: "First Aid Kit — Large", category: .medical,
+            quantity: 1, unit: "kits", minimumQuantity: 1,
+            notes: "Trauma kit incl. tourniquets"
+        ),
+        SupplyItem(
+            id: "s_med_3", name: "Electrolyte Powder", category: .medical,
+            quantity: 3, unit: "tubs", minimumQuantity: 2,
+            expirationDate: "2026-10-15", notes: "Oral rehydration — check dose per liter"
+        ),
+        SupplyItem(
+            id: "s_tools_1", name: "AA Batteries", category: .tools,
+            quantity: 48, unit: "count", minimumQuantity: 24,
+            notes: "Rotate — flashlight stock"
+        ),
+        SupplyItem(
+            id: "s_tools_2", name: "Duct Tape", category: .tools,
+            quantity: 4, unit: "rolls", minimumQuantity: 2,
+            notes: "Garage pegboard"
+        ),
+        SupplyItem(
+            id: "s_comms_1", name: "FRS Two-Way Radios", category: .comms,
+            quantity: 6, unit: "units", minimumQuantity: 4,
+            notes: "Charged monthly — see Comms tab channels"
+        ),
+        SupplyItem(
+            id: "s_shelter_1", name: "Tarps — 10×12", category: .shelter,
+            quantity: 4, unit: "units", minimumQuantity: 2,
+            notes: "With grommets + bungee assortment"
         ),
     ]
 
@@ -122,6 +177,78 @@ enum MockData {
             ],
             lastUpdated: ISO8601DateFormatter().string(from: Date())
         ),
+        Checklist(
+            id: "cl5", title: "First Aid Kit",
+            description: "Trauma-ready medical kit contents",
+            icon: "cross.case.fill",
+            items: [
+                ChecklistItem(id: "cl5-1", text: "Assorted adhesive bandages", completed: false),
+                ChecklistItem(id: "cl5-2", text: "Sterile gauze pads + rolled gauze", completed: false),
+                ChecklistItem(id: "cl5-3", text: "Medical tape", completed: false),
+                ChecklistItem(id: "cl5-4", text: "Tourniquet (CAT style)", completed: false),
+                ChecklistItem(id: "cl5-5", text: "Hemostatic (clotting) gauze", completed: false),
+                ChecklistItem(id: "cl5-6", text: "Antiseptic wipes + antibiotic ointment", completed: false),
+                ChecklistItem(id: "cl5-7", text: "Pain relievers, antihistamines, anti-diarrheal", completed: false),
+                ChecklistItem(id: "cl5-8", text: "Trauma shears + tweezers", completed: false),
+                ChecklistItem(id: "cl5-9", text: "Nitrile gloves", completed: false),
+                ChecklistItem(id: "cl5-10", text: "CPR face shield", completed: false),
+                ChecklistItem(id: "cl5-11", text: "Digital thermometer", completed: false),
+                ChecklistItem(id: "cl5-12", text: "30-day supply of personal prescriptions", completed: false),
+                ChecklistItem(id: "cl5-13", text: "First aid reference manual", completed: false),
+            ],
+            lastUpdated: ISO8601DateFormatter().string(from: Date())
+        ),
+        Checklist(
+            id: "cl6", title: "Water Storage",
+            description: "Two-week minimum water reserve",
+            icon: "drop.fill",
+            items: [
+                ChecklistItem(id: "cl6-1", text: "1 gallon per person per day × 14 days", completed: false),
+                ChecklistItem(id: "cl6-2", text: "Food-grade containers only, clearly labeled", completed: false),
+                ChecklistItem(id: "cl6-3", text: "Treat tap water with 8 drops bleach per gallon", completed: false),
+                ChecklistItem(id: "cl6-4", text: "Rotate stored water every 6 months", completed: false),
+                ChecklistItem(id: "cl6-5", text: "Store away from sunlight and chemicals", completed: false),
+                ChecklistItem(id: "cl6-6", text: "Know water heater drain valve (30-50 gal reserve)", completed: false),
+                ChecklistItem(id: "cl6-7", text: "Collapsible containers for hauling", completed: false),
+                ChecklistItem(id: "cl6-8", text: "Backup purification (filter + tablets)", completed: false),
+            ],
+            lastUpdated: ISO8601DateFormatter().string(from: Date())
+        ),
+        Checklist(
+            id: "cl7", title: "Sanitation Kit",
+            description: "Stay healthy when plumbing is down",
+            icon: "hands.sparkles.fill",
+            items: [
+                ChecklistItem(id: "cl7-1", text: "5-gal bucket with toilet seat lid", completed: false),
+                ChecklistItem(id: "cl7-2", text: "Heavy-duty trash bag liners", completed: false),
+                ChecklistItem(id: "cl7-3", text: "Kitty litter, lime, or sawdust", completed: false),
+                ChecklistItem(id: "cl7-4", text: "Soap + 60%+ alcohol hand sanitizer", completed: false),
+                ChecklistItem(id: "cl7-5", text: "Toilet paper + feminine hygiene supplies", completed: false),
+                ChecklistItem(id: "cl7-6", text: "Unscented bleach + disinfectant", completed: false),
+                ChecklistItem(id: "cl7-7", text: "Nitrile gloves", completed: false),
+                ChecklistItem(id: "cl7-8", text: "Wash basins + baby wipes", completed: false),
+                ChecklistItem(id: "cl7-9", text: "Toothbrushes + baking soda toothpaste", completed: false),
+            ],
+            lastUpdated: ISO8601DateFormatter().string(from: Date())
+        ),
+        Checklist(
+            id: "cl8", title: "Generator & Power",
+            description: "Backup power readiness and safety",
+            icon: "bolt.fill",
+            items: [
+                ChecklistItem(id: "cl8-1", text: "Generator runs — test monthly under load", completed: false),
+                ChecklistItem(id: "cl8-2", text: "Fuel stored + stabilized, rotated 6-12 months", completed: false),
+                ChecklistItem(id: "cl8-3", text: "Spare oil, filter, spark plug", completed: false),
+                ChecklistItem(id: "cl8-4", text: "Heavy-duty extension cords (outdoor rated)", completed: false),
+                ChecklistItem(id: "cl8-5", text: "Transfer switch installed (no backfeeding)", completed: false),
+                ChecklistItem(id: "cl8-6", text: "Battery CO detector near sleeping areas", completed: false),
+                ChecklistItem(id: "cl8-7", text: "Solar panel + charge controller", completed: false),
+                ChecklistItem(id: "cl8-8", text: "Battery bank charged (LiFePO4 preferred)", completed: false),
+                ChecklistItem(id: "cl8-9", text: "12V inverter for vehicle charging", completed: false),
+                ChecklistItem(id: "cl8-10", text: "Charging cables for radios, phones, lights", completed: false),
+            ],
+            lastUpdated: ISO8601DateFormatter().string(from: Date())
+        ),
     ]
 
     static let commsChannels: [CommsChannel] = [
@@ -181,6 +308,18 @@ enum MockData {
             "If obstructed: Position relay on high ground or use repeater",
             "Test with low power first, increase only if needed",
         ]),
+        CommsProtocol(id: "proto6", title: "Brevity Codes & Prowords", description: "Standard reference card — phonetic alphabet and prowords for short, unambiguous transmissions", steps: [
+            "Phonetic alphabet: Alpha Bravo Charlie Delta Echo Foxtrot Golf Hotel India Juliett Kilo Lima Mike November Oscar Papa Quebec Romeo Sierra Tango Uniform Victor Whiskey X-ray Yankee Zulu",
+            "Numbers: speak digit by digit — \"one-two-three\", decimals as \"point\" (\"one-two-point-five\")",
+            "OVER = my transmission is ended, respond",
+            "OUT = conversation is ended (never say \"over and out\")",
+            "ROGER = received and understood · WILCO = received and will comply",
+            "SAY AGAIN = repeat your last transmission · I SAY AGAIN = I am repeating",
+            "STANDBY = wait, I will call you back · WAIT OUT = lengthy pause expected",
+            "BREAK = separating parts of a message or ending one message to start another",
+            "NEGATIVE / AFFIRMATIVE = no / yes",
+            "Readability scale: 1 = unreadable, 3 = readable with difficulty, 5 = perfectly readable",
+        ]),
     ]
 
     static let guides: [Guide] = [
@@ -212,6 +351,20 @@ enum MockData {
             GuideSection(title: "Smoking", content: "Build a smoke chamber or use enclosed grill. Maintain low heat (100-150 degrees F) with hardwood smoke. Cold smoking for preservation, hot smoking for cooking. Takes 12-24 hours. Combine with salt curing for best results."),
             GuideSection(title: "Dehydration", content: "Slice food thin and uniform. Sun dry on clean screens in hot, dry weather. Can improvise solar dehydrator with car windshield. Properly dried food should be brittle. Store in airtight containers."),
             GuideSection(title: "Root Cellaring", content: "Store root vegetables in cool (32-40 degrees F), humid, dark conditions. Layer in sand or sawdust. Separate ethylene-producing items (apples) from sensitive items (potatoes). Check regularly for spoilage."),
+        ]),
+        Guide(id: "g7", title: "Sanitation & Hygiene", category: "Survival", icon: "hands.sparkles.fill", summary: "Preventing disease when plumbing and trash service are gone — unsafe sanitation is the #1 killer after disasters.", sections: [
+            GuideSection(title: "Hand Hygiene", content: "Wash hands with soap and water for 20 seconds before eating, after waste handling, and before treating wounds. When soap runs out, use ash and water, then 60%+ alcohol sanitizer. Hand hygiene prevents more illness than any other measure."),
+            GuideSection(title: "Human Waste", content: "Line a 5-gallon bucket with heavy trash bags; add a scoop of kitty litter, lime, or sawdust after each use and seal the bag when full. Bury in a cat-hole 6-8 inches deep, at least 200 feet from any water source. Never bury waste near wells or gardens."),
+            GuideSection(title: "Greywater & Trash", content: "Dump dish and wash water at least 100 feet from streams, wells, and gardens. Bury food scraps deep or they attract rodents. Burn or bury refuse rather than letting it pile up and breed flies."),
+            GuideSection(title: "Keeping Clean", content: "Take sponge baths with a basin of warm water instead of showers. Keep feet dry and change socks daily — trench foot disables more people than combat. Brush with baking soda or salt when toothpaste is gone."),
+            GuideSection(title: "Disease Watch", content: "Diarrhea is the top post-disaster killer. Anyone with symptoms should isolate, drink only boiled or treated water, and rehydrate aggressively with oral rehydration solution (1 liter water, 6 tsp sugar, 1/2 tsp salt). Escalate if symptoms last more than 3 days."),
+        ]),
+        Guide(id: "g8", title: "Backup Power", category: "Supplies", icon: "powerplug.fill", summary: "Generators, solar, and battery banks — keeping critical devices powered safely when the grid is down.", sections: [
+            GuideSection(title: "Generator Safety", content: "Never run a generator indoors, in a garage, or within 20 feet of a window or vent — carbon monoxide kills silently. Keep it dry under an open canopy. Never back-feed house wiring without a proper transfer switch; it can electrocute line workers."),
+            GuideSection(title: "Fuel Storage & Rotation", content: "Store gasoline in approved containers away from living spaces, with fuel stabilizer, and rotate every 6-12 months by using it in your vehicle. A typical portable generator burns 0.5-1 gallon per hour at load — plan reserves accordingly."),
+            GuideSection(title: "Solar Charging", content: "A 100-200W panel with a charge controller covers phones, radios, and lights indefinitely. Clean panels and re-aim them at midday for best output. Expect 30-50% less production in winter or heavy overcast."),
+            GuideSection(title: "Battery Banks", content: "LiFePO4 batteries last far longer than lead-acid and tolerate partial charging. Size your bank to your loads: radios, LED lights, and phone charging typically need 300-500Wh per day for a small group. Keep banks charged and above freezing."),
+            GuideSection(title: "Conservation First", content: "The cheapest watt is the one you never use. Run LED task lighting instead of room lighting, cool with shade and airflow before powered cooling, and charge devices in batches rather than continuously."),
         ]),
         Guide(id: "g6", title: "Security & Watch Protocols", category: "Security", icon: "shield.fill", summary: "Establishing a security posture and watch schedule for your group.", sections: [
             GuideSection(title: "Watch Schedule", content: "Minimum 2-person watches. 4-hour shifts maximum at night. Rotate positions. Maintain a watch log. Brief incoming watch on current situation. Establish clear alert escalation procedures."),
@@ -324,6 +477,7 @@ enum MockData {
         KiwixResource(id: "kiwix-education-ted-tech", title: "TED Tech Talks (Multilingual)", category: .other, description: "Technology and innovation talks in a dozen languages — engineering ideas, practical ingenuity, and futurism. Education and morale content for long stretches off-grid.", sizeLabel: "113 MB", downloadUrl: "https://download.kiwix.org/zim/ted/ted_mul_tech_2025-10.zim", language: "Multilingual", lastUpdated: "2025-10-01", tags: ["education", "talks", "technology", "innovation"], status: .available, sizeBytes: 118936923, infoUrl: "https://browse.library.kiwix.org/content/ted_mul_tech_2025-10"),
         KiwixResource(id: "kiwix-travel-wikivoyage", title: "Wikivoyage — World Travel Guide", category: .other, description: "The free worldwide travel guide, without images: cities, regions, border crossings, itineraries, and local knowledge for relocation, evacuation routes, or moving through unfamiliar territory.", sizeLabel: "223 MB", downloadUrl: "https://download.kiwix.org/zim/wikivoyage/wikivoyage_en_all_nopic_2026-06.zim", language: "English", lastUpdated: "2026-06-01", tags: ["travel", "regions", "border crossings", "relocation", "itineraries"], status: .available, sizeBytes: 233631995, infoUrl: "https://browse.library.kiwix.org/content/wikivoyage_en_all_nopic_2026-06"),
         KiwixResource(id: "kiwix-dictionary-wiktionary", title: "Simple English Dictionary", category: .reference, description: "Definitions, synonyms, and pronunciation for hundreds of thousands of English words in simplified English — the smallest complete dictionary in the catalog, no images.", sizeLabel: "25 MB", downloadUrl: "https://download.kiwix.org/zim/wiktionary/wiktionary_en-simple_all_nopic_2026-07.zim", language: "English", lastUpdated: "2026-07-01", tags: ["dictionary", "definitions", "language", "quick reference", "low bandwidth"], status: .available, sizeBytes: 26535079, infoUrl: "https://browse.library.kiwix.org/content/wiktionary_en-simple_all_nopic_2026-07"),
+        KiwixResource(id: "kiwix-security-stackexchange", title: "Information Security Q&A", category: .security, description: "Complete Q&A archive from the information security community: OPSEC, encryption, secure communications, threat modeling, and privacy hardening — protecting your group when networks are untrusted.", sizeLabel: "419 MB", downloadUrl: "https://download.kiwix.org/zim/stack_exchange/security.stackexchange.com_en_all_2026-08.zim", language: "English", lastUpdated: "2026-08-01", tags: ["opsec", "encryption", "privacy", "threat modeling", "Q&A"], status: .available, sizeBytes: 439160380, infoUrl: "https://browse.library.kiwix.org/content/security.stackexchange.com_en_all_2026-08"),
     ]
 
     static let routeColors: [String] = [
@@ -358,4 +512,49 @@ enum MockData {
         96: ("Thunderstorm + Hail", "cloud.bolt.fill"),
         99: ("Thunderstorm + Heavy Hail", "cloud.bolt.fill"),
     ]
+
+    /// Generates a starter set of tactical POIs around the user's actual
+    /// location for first-launch seeding instead of the St. Louis demo data.
+    /// Offsets are deterministic (~1° ≈ 111 km; values here are 0.2-1 km).
+    /// Infrastructure POIs are not generated — they require real place data
+    /// the app cannot fabricate.
+    static func generateLocalPois(center: Coordinates) -> [POI] {
+        func at(_ dLat: Double, _ dLng: Double) -> Coordinates {
+            Coordinates(latitude: center.latitude + dLat, longitude: center.longitude + dLng)
+        }
+        return [
+            POI(id: "local-rally-1", name: "Rally Point Alpha", category: .rallyPoint, coordinates: at(0.004, 0.003), notes: "Primary meetup spot near home base. Edit this POI and set the real location your group agreed on.", createdAt: "2024-01-01T00:00:00.000Z"),
+            POI(id: "local-rally-2", name: "Rally Point Bravo", category: .rallyPoint, coordinates: at(-0.005, 0.004), notes: "Alternate meetup — different direction than Alpha. Pick a covered, easy-to-find spot.", createdAt: "2024-01-01T00:00:00.000Z"),
+            POI(id: "local-rally-3", name: "Rally Point Charlie", category: .rallyPoint, coordinates: at(0.003, -0.006), notes: "Emergency fallback — low-traffic and concealed from main roads.", createdAt: "2024-01-01T00:00:00.000Z"),
+            POI(id: "local-water-1", name: "Water Source — Surveyed", category: .water, coordinates: at(-0.004, -0.003), notes: "Nearest known surface water or well. Always filter and purify. Edit with the real location and access notes.", createdAt: "2024-01-01T00:00:00.000Z"),
+            POI(id: "local-shelter-1", name: "Shelter Option", category: .shelter, coordinates: at(0.006, -0.002), notes: "Nearby building with potential for sheltering the group — note capacity, water access, and structural quality.", createdAt: "2024-01-01T00:00:00.000Z"),
+            POI(id: "local-cache-1", name: "Cache — Primary", category: .supplyCache, coordinates: at(-0.002, -0.005), notes: "Pre-positioned supply cache. List contents and rotation date in these notes — GPS coordinates only, no surface markers.", createdAt: "2024-01-01T00:00:00.000Z"),
+            POI(id: "local-comms-1", name: "Comms Point — High Ground", category: .comms, coordinates: at(0.008, 0.006), notes: "Best local elevation for radio line-of-sight. Deploy the portable mast here for extended range.", createdAt: "2024-01-01T00:00:00.000Z"),
+            POI(id: "local-hazard-1", name: "Local Hazard Zone", category: .hazard, coordinates: at(-0.008, -0.007), notes: "Flood-prone, industrial, or high-crime area to avoid during alerts. Describe the specific risk.", createdAt: "2024-01-01T00:00:00.000Z"),
+        ]
+    }
+
+    /// Generates starter routes around the user's location to accompany
+    /// generateLocalPois — a bug-out heading and a local recon loop.
+    static func generateLocalRoutes(center: Coordinates) -> [Route] {
+        func at(_ dLat: Double, _ dLng: Double) -> Coordinates {
+            Coordinates(latitude: center.latitude + dLat, longitude: center.longitude + dLng)
+        }
+        return [
+            Route(id: "local-route-evac-1", name: "Bug-Out Route (Primary)", color: "#D4822A", waypoints: [
+                at(0.004, 0.003),
+                at(0.02, 0.02),
+                at(0.05, 0.045),
+                at(0.09, 0.08),
+            ], notes: "Primary evacuation heading away from the city center. Edit waypoints to follow real roads and avoid choke points.", createdAt: "2024-01-01T00:00:00.000Z"),
+            Route(id: "local-route-recon-1", name: "Local Recon Loop", color: "#4CAF50", waypoints: [
+                at(0.004, 0.003),
+                at(0.008, 0.006),
+                at(0.006, -0.002),
+                at(0.0, 0.0),
+                at(-0.004, -0.003),
+                at(0.004, 0.003),
+            ], notes: "Loop past the comms point, shelter, home base, and water source. Adjust to your actual locations.", createdAt: "2024-01-01T00:00:00.000Z"),
+        ]
+    }
 }

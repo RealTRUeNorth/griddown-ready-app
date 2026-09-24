@@ -6,6 +6,7 @@ final class AppStore {
     var alertLevel: AlertLevel = .green
     var groupName: String = "My Group"
     var checkInIntervalHours: Int = 6
+    var remindersEnabled: Bool = false
     var members: [GroupMember] = MockData.members
     var supplies: [SupplyItem] = MockData.seedSupplies
     var checklists: [Checklist] = MockData.checklists
@@ -17,18 +18,27 @@ final class AppStore {
 
     private let storageKey = "griddown_app_data"
     private let versionKey = "griddown_data_version"
-    private let currentDataVersion = 3
+    private let currentDataVersion = 4
+    private var loadedFromStorage = false
 
     init() {
         loadData()
+        seedLocalPoisIfNeeded()
+        if remindersEnabled {
+            // Re-register pending requests on launch — idempotent reschedule
+            NotificationsService.scheduleCheckInReminder(intervalHours: checkInIntervalHours)
+            rescheduleSupplyReminders()
+        }
     }
 
     private func loadData() {
         guard let data = UserDefaults.standard.data(forKey: storageKey),
               let decoded = try? JSONDecoder().decode(AppData.self, from: data) else { return }
+        loadedFromStorage = true
         alertLevel = decoded.alertLevel
         groupName = decoded.groupName
         checkInIntervalHours = decoded.checkInIntervalHours
+        remindersEnabled = decoded.remindersEnabled
         members = decoded.members
         supplies = decoded.supplies
         checklists = decoded.checklists.isEmpty ? MockData.checklists : decoded.checklists
@@ -55,14 +65,45 @@ final class AppStore {
             if supplies.isEmpty {
                 supplies = MockData.seedSupplies
             }
+            // v4: merge expanded seed checklists & supplies into existing data
+            let existingChecklistIds = Set(checklists.map { $0.id })
+            let missingChecklists = MockData.checklists.filter { !existingChecklistIds.contains($0.id) }
+            if !missingChecklists.isEmpty {
+                checklists.append(contentsOf: missingChecklists)
+            }
+            let existingSupplyIds = Set(supplies.map { $0.id })
+            let missingSupplies = MockData.seedSupplies.filter { !existingSupplyIds.contains($0.id) }
+            if !missingSupplies.isEmpty {
+                supplies.append(contentsOf: missingSupplies)
+            }
             UserDefaults.standard.set(currentDataVersion, forKey: versionKey)
             persist()
+        }
+    }
+
+    /// First launch only: seeds tactical POIs/routes around the user's actual
+    /// location when permission is granted, instead of the St. Louis demo data.
+    private func seedLocalPoisIfNeeded() {
+        let flagKey = "griddown_seeded_local_pois"
+        guard !loadedFromStorage,
+              !UserDefaults.standard.bool(forKey: flagKey) else { return }
+        Task { @MainActor [weak self] in
+            UserDefaults.standard.set(true, forKey: flagKey)
+            let locator = LocationManager()
+            guard await locator.requestPermission(),
+                  let location = await locator.getCurrentLocation(),
+                  let self,
+                  self.pois == MockData.allSeedPois else { return }
+            self.pois = MockData.generateLocalPois(center: location)
+            self.routes = MockData.generateLocalRoutes(center: location)
+            self.persist()
         }
     }
 
     private func persist() {
         let data = AppData(
             alertLevel: alertLevel, groupName: groupName, checkInIntervalHours: checkInIntervalHours,
+            remindersEnabled: remindersEnabled,
             members: members,
             supplies: supplies, checklists: checklists, pois: pois, routes: routes,
             commsChannels: commsChannels, commsRepeaters: commsRepeaters,
@@ -110,6 +151,39 @@ final class AppStore {
     func updateCheckInInterval(_ hours: Int) {
         checkInIntervalHours = hours
         persist()
+        if remindersEnabled {
+            NotificationsService.scheduleCheckInReminder(intervalHours: hours)
+        }
+    }
+
+    /// Enables/disables local reminders. Enabling prompts for notification
+    /// permission and reverts the toggle if permission is denied.
+    func updateRemindersEnabled(_ enabled: Bool) {
+        remindersEnabled = enabled
+        persist()
+        if enabled {
+            Task { @MainActor in
+                guard await NotificationsService.requestAuthorization() else {
+                    remindersEnabled = false
+                    persist()
+                    return
+                }
+                NotificationsService.scheduleCheckInReminder(intervalHours: checkInIntervalHours)
+                rescheduleSupplyReminders()
+            }
+        } else {
+            NotificationsService.cancelCheckInReminder()
+            for item in supplies {
+                NotificationsService.removeSupplyReminder(item.id)
+            }
+        }
+    }
+
+    private func rescheduleSupplyReminders() {
+        guard remindersEnabled else { return }
+        for item in supplies {
+            NotificationsService.scheduleSupplyReminder(item)
+        }
     }
 
     func checkInMember(_ id: String) {
@@ -124,11 +198,23 @@ final class AppStore {
     }
     func removeMember(_ id: String) { members.removeAll { $0.id == id }; persist() }
 
-    func addSupply(_ item: SupplyItem) { supplies.append(item); persist() }
-    func updateSupply(_ item: SupplyItem) {
-        if let idx = supplies.firstIndex(where: { $0.id == item.id }) { supplies[idx] = item; persist() }
+    func addSupply(_ item: SupplyItem) {
+        supplies.append(item)
+        persist()
+        if remindersEnabled { NotificationsService.scheduleSupplyReminder(item) }
     }
-    func removeSupply(_ id: String) { supplies.removeAll { $0.id == id }; persist() }
+    func updateSupply(_ item: SupplyItem) {
+        if let idx = supplies.firstIndex(where: { $0.id == item.id }) {
+            supplies[idx] = item
+            persist()
+            if remindersEnabled { NotificationsService.scheduleSupplyReminder(item) }
+        }
+    }
+    func removeSupply(_ id: String) {
+        supplies.removeAll { $0.id == id }
+        persist()
+        if remindersEnabled { NotificationsService.removeSupplyReminder(id) }
+    }
 
     func toggleChecklistItem(checklistId: String, itemId: String) {
         guard let clIdx = checklists.firstIndex(where: { $0.id == checklistId }) else { return }
@@ -190,6 +276,7 @@ final class AppStore {
             exportedAt: ISO8601DateFormatter().string(from: Date()),
             data: AppData(
                 alertLevel: alertLevel, groupName: groupName, checkInIntervalHours: checkInIntervalHours,
+                remindersEnabled: remindersEnabled,
                 members: members,
                 supplies: supplies, checklists: checklists, pois: pois, routes: routes,
                 commsChannels: commsChannels, commsRepeaters: commsRepeaters,
@@ -221,6 +308,7 @@ final class AppStore {
         let trimmedName = payload.groupName?.trimmingCharacters(in: .whitespaces) ?? ""
         groupName = trimmedName.isEmpty ? "My Group" : trimmedName
         checkInIntervalHours = payload.checkInIntervalHours ?? 6
+        remindersEnabled = payload.remindersEnabled ?? false
         members = payload.members ?? []
         supplies = payload.supplies ?? []
         checklists = payload.checklists ?? []

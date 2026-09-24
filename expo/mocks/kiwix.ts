@@ -203,6 +203,20 @@ export const kiwixCatalog: KiwixResource[] = [
     tags: ['dictionary', 'definitions', 'language', 'quick reference', 'low bandwidth'],
     status: 'available',
   },
+  {
+    id: 'kiwix-security-stackexchange',
+    title: 'Information Security Q&A',
+    category: 'security',
+    description: 'Complete Q&A archive from the information security community: OPSEC, encryption, secure communications, threat modeling, and privacy hardening — protecting your group when networks are untrusted.',
+    sizeLabel: '419 MB',
+    sizeBytes: 439160380,
+    downloadUrl: 'https://download.kiwix.org/zim/stack_exchange/security.stackexchange.com_en_all_2026-08.zim',
+    infoUrl: 'https://browse.library.kiwix.org/content/security.stackexchange.com_en_all_2026-08',
+    language: 'English',
+    lastUpdated: '2026-08-01',
+    tags: ['opsec', 'encryption', 'privacy', 'threat modeling', 'Q&A'],
+    status: 'available',
+  },
 ];
 
 export const kiwixCategories: { key: string; label: string }[] = [

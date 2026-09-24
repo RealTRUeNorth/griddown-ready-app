@@ -14,6 +14,8 @@ import {
   Home,
   Wheat,
   Shield,
+  ShowerHead,
+  BatteryCharging,
   ChevronRight,
   BookOpen,
 } from 'lucide-react-native';
@@ -27,6 +29,8 @@ const iconMap: Record<string, (color: string, size: number) => React.ReactNode> 
   Home: (c, s) => <Home color={c} size={s} />,
   Wheat: (c, s) => <Wheat color={c} size={s} />,
   Shield: (c, s) => <Shield color={c} size={s} />,
+  ShowerHead: (c, s) => <ShowerHead color={c} size={s} />,
+  BatteryCharging: (c, s) => <BatteryCharging color={c} size={s} />,
 };
 
 export default function GuidesScreen() {

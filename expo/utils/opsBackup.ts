@@ -55,6 +55,7 @@ export function parseOpsBackup(raw: string): AppData | null {
       checkInIntervalHours: typeof source.checkInIntervalHours === 'number' && source.checkInIntervalHours > 0
         ? source.checkInIntervalHours
         : 6,
+      remindersEnabled: typeof source.remindersEnabled === 'boolean' ? source.remindersEnabled : false,
       members: asArray(source.members),
       supplies: asArray(source.supplies),
       checklists: asArray(source.checklists),

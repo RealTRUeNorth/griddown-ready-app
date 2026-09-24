@@ -96,6 +96,35 @@ struct SettingsView: View {
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
                 .clipShape(.rect(cornerRadius: 12))
 
+                SectionLabel(text: "REMINDERS")
+
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "bell.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Theme.orangeLight)
+                        Text("Check-In & Expiry Alerts")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    Text("A repeating check-in reminder follows your cadence above. Supply alerts fire 30 days before expiration dates. All notifications are local — nothing leaves this device.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.textMuted)
+                    Toggle(isOn: Binding(
+                        get: { store.remindersEnabled },
+                        set: { store.updateRemindersEnabled($0) }
+                    )) {
+                        Text(store.remindersEnabled ? "Reminders On" : "Reminders Off")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    .tint(Theme.statusGreen)
+                }
+                .padding(16)
+                .background(Theme.bgCard)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+                .clipShape(.rect(cornerRadius: 12))
+
                 SectionLabel(text: "ABOUT")
 
                 VStack(alignment: .leading, spacing: 12) {

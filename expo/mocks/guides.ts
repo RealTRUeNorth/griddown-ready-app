@@ -123,6 +123,64 @@ export const defaultGuides: Guide[] = [
     ],
   },
   {
+    id: 'g7',
+    title: 'Sanitation & Hygiene',
+    category: 'Survival',
+    icon: 'ShowerHead',
+    summary: 'Preventing disease when plumbing and trash service are gone — unsafe sanitation is the #1 killer after disasters.',
+    sections: [
+      {
+        title: 'Hand Hygiene',
+        content: 'Wash hands with soap and water for 20 seconds before eating, after waste handling, and before treating wounds. When soap runs out, use ash and water, then 60%+ alcohol sanitizer. Hand hygiene prevents more illness than any other measure.',
+      },
+      {
+        title: 'Human Waste',
+        content: 'Line a 5-gallon bucket with heavy trash bags; add a scoop of kitty litter, lime, or sawdust after each use and seal the bag when full. Bury in a cat-hole 6-8 inches deep, at least 200 feet from any water source. Never bury waste near wells or gardens.',
+      },
+      {
+        title: 'Greywater & Trash',
+        content: 'Dump dish and wash water at least 100 feet from streams, wells, and gardens. Bury food scraps deep or they attract rodents. Burn or bury refuse rather than letting it pile up and breed flies.',
+      },
+      {
+        title: 'Keeping Clean',
+        content: 'Take sponge baths with a basin of warm water instead of showers. Keep feet dry and change socks daily — trench foot disables more people than combat. Brush with baking soda or salt when toothpaste is gone.',
+      },
+      {
+        title: 'Disease Watch',
+        content: 'Diarrhea is the top post-disaster killer. Anyone with symptoms should isolate, drink only boiled or treated water, and rehydrate aggressively with oral rehydration solution (1 liter water, 6 tsp sugar, 1/2 tsp salt). Escalate if symptoms last more than 3 days.',
+      },
+    ],
+  },
+  {
+    id: 'g8',
+    title: 'Backup Power',
+    category: 'Supplies',
+    icon: 'BatteryCharging',
+    summary: 'Generators, solar, and battery banks — keeping critical devices powered safely when the grid is down.',
+    sections: [
+      {
+        title: 'Generator Safety',
+        content: 'Never run a generator indoors, in a garage, or within 20 feet of a window or vent — carbon monoxide kills silently. Keep it dry under an open canopy. Never back-feed house wiring without a proper transfer switch; it can electrocute line workers.',
+      },
+      {
+        title: 'Fuel Storage & Rotation',
+        content: 'Store gasoline in approved containers away from living spaces, with fuel stabilizer, and rotate every 6-12 months by using it in your vehicle. A typical portable generator burns 0.5-1 gallon per hour at load — plan reserves accordingly.',
+      },
+      {
+        title: 'Solar Charging',
+        content: 'A 100-200W panel with a charge controller covers phones, radios, and lights indefinitely. Clean panels and re-aim them at midday for best output. Expect 30-50% less production in winter or heavy overcast.',
+      },
+      {
+        title: 'Battery Banks',
+        content: 'LiFePO4 batteries last far longer than lead-acid and tolerate partial charging. Size your bank to your loads: radios, LED lights, and phone charging typically need 300-500Wh per day for a small group. Keep banks charged and above freezing.',
+      },
+      {
+        title: 'Conservation First',
+        content: 'The cheapest watt is the one you never use. Run LED task lighting instead of room lighting, cool with shade and airflow before powered cooling, and charge devices in batches rather than continuously.',
+      },
+    ],
+  },
+  {
     id: 'g6',
     title: 'Security & Watch Protocols',
     category: 'Security',

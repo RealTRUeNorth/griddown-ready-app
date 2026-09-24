@@ -237,33 +237,58 @@ struct StatusView: View {
             }
             .buttonStyle(.plain)
             NavigationLink(value: NavRoute.guides) {
-                StatCard(icon: "book.fill", iconColor: Theme.amberLight, label: "GUIDES", value: "6", sublabel: "Available")
+                StatCard(icon: "book.fill", iconColor: Theme.amberLight, label: "GUIDES", value: "\(MockData.guides.count)", sublabel: "Available")
             }
             .buttonStyle(.plain)
         }
         .padding(.bottom, 10)
     }
 
+    // Quick actions resolve seed IDs by title so they survive seed data changes
+    private var bugOutChecklist: Checklist? {
+        MockData.checklists.first { $0.title.localizedCaseInsensitiveContains("bug-out") } ?? MockData.checklists.first
+    }
+
+    private var commsChecklist: Checklist? {
+        MockData.checklists.first { $0.title.localizedCaseInsensitiveContains("comms") } ?? MockData.checklists.dropFirst().first
+    }
+
+    private var securityGuide: Guide? {
+        MockData.guides.first { $0.title.localizedCaseInsensitiveContains("security") } ?? MockData.guides.first
+    }
+
+    private var firstAidGuide: Guide? {
+        MockData.guides.first { $0.title.localizedCaseInsensitiveContains("first aid") } ?? MockData.guides.dropFirst().first
+    }
+
     private var quickAccessSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             SectionLabel(text: "QUICK ACCESS")
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-                NavigationLink(value: NavRoute.checklistDetail("cl1")) {
-                    QuickAction(icon: "bolt.fill", label: "Bug-Out Bag")
+                if let cl = bugOutChecklist {
+                    NavigationLink(value: NavRoute.checklistDetail(cl.id)) {
+                        QuickAction(icon: "bolt.fill", label: "Bug-Out Bag")
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-                NavigationLink(value: NavRoute.checklistDetail("cl3")) {
-                    QuickAction(icon: "antenna.radiowaves.left.and.right", label: "Comms Plan")
+                if let cl = commsChecklist {
+                    NavigationLink(value: NavRoute.checklistDetail(cl.id)) {
+                        QuickAction(icon: "antenna.radiowaves.left.and.right", label: "Comms Plan")
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-                NavigationLink(value: NavRoute.guideDetail("g6")) {
-                    QuickAction(icon: "shield.fill", label: "Security")
+                if let guide = securityGuide {
+                    NavigationLink(value: NavRoute.guideDetail(guide.id)) {
+                        QuickAction(icon: "shield.fill", label: "Security")
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-                NavigationLink(value: NavRoute.guideDetail("g2")) {
-                    QuickAction(icon: "heart.fill", label: "First Aid")
+                if let guide = firstAidGuide {
+                    NavigationLink(value: NavRoute.guideDetail(guide.id)) {
+                        QuickAction(icon: "heart.fill", label: "First Aid")
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
         }
     }

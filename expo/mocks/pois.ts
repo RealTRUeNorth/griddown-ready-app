@@ -1,4 +1,4 @@
-import { POI, Route } from '@/types';
+import { POI, Route, Coordinates } from '@/types';
 
 /**
  * Default infrastructure POIs — emergency services, utilities, and tactical
@@ -374,4 +374,127 @@ export const defaultRoutes: Route[] = [
 
 /** All seed POIs combined for AppProvider initialization */
 export const allSeedPois: POI[] = [...defaultInfrastructurePois, ...defaultTacticalPois];
+
+/**
+ * Generates a starter set of tactical POIs around the user's actual location,
+ * used for first-launch seeding instead of the hardcoded St. Louis defaults.
+ * Offsets are deterministic (~1 offset degree ≈ 111 km, values here are 0.2-1 km)
+ * so results are stable and testable. Infrastructure POIs are not generated —
+ * they require real place data the app cannot fabricate.
+ */
+export function generateLocalPois(center: Coordinates): POI[] {
+  const now = '2024-01-01T00:00:00.000Z';
+  const at = (dLat: number, dLng: number): Coordinates => ({
+    latitude: +(center.latitude + dLat).toFixed(5),
+    longitude: +(center.longitude + dLng).toFixed(5),
+  });
+  return [
+    {
+      id: 'local-rally-1',
+      name: 'Rally Point Alpha',
+      category: 'rally_point',
+      coordinates: at(0.004, 0.003),
+      notes: 'Primary meetup spot near home base. Edit this POI and set the real location your group agreed on.',
+      createdAt: now,
+    },
+    {
+      id: 'local-rally-2',
+      name: 'Rally Point Bravo',
+      category: 'rally_point',
+      coordinates: at(-0.005, 0.004),
+      notes: 'Alternate meetup — different direction than Alpha. Pick a covered, easy-to-find spot.',
+      createdAt: now,
+    },
+    {
+      id: 'local-rally-3',
+      name: 'Rally Point Charlie',
+      category: 'rally_point',
+      coordinates: at(0.003, -0.006),
+      notes: 'Emergency fallback — low-traffic and concealed from main roads.',
+      createdAt: now,
+    },
+    {
+      id: 'local-water-1',
+      name: 'Water Source — Surveyed',
+      category: 'water',
+      coordinates: at(-0.004, -0.003),
+      notes: 'Nearest known surface water or well. Always filter and purify. Edit with the real location and access notes.',
+      createdAt: now,
+    },
+    {
+      id: 'local-shelter-1',
+      name: 'Shelter Option',
+      category: 'shelter',
+      coordinates: at(0.006, -0.002),
+      notes: 'Nearby building with potential for sheltering the group — note capacity, water access, and structural quality.',
+      createdAt: now,
+    },
+    {
+      id: 'local-cache-1',
+      name: 'Cache — Primary',
+      category: 'supply_cache',
+      coordinates: at(-0.002, -0.005),
+      notes: 'Pre-positioned supply cache. List contents and rotation date in these notes — GPS coordinates only, no surface markers.',
+      createdAt: now,
+    },
+    {
+      id: 'local-comms-1',
+      name: 'Comms Point — High Ground',
+      category: 'comms',
+      coordinates: at(0.008, 0.006),
+      notes: 'Best local elevation for radio line-of-sight. Deploy the portable mast here for extended range.',
+      createdAt: now,
+    },
+    {
+      id: 'local-hazard-1',
+      name: 'Local Hazard Zone',
+      category: 'hazard',
+      coordinates: at(-0.008, -0.007),
+      notes: 'Flood-prone, industrial, or high-crime area to avoid during alerts. Describe the specific risk.',
+      createdAt: now,
+    },
+  ];
+}
+
+/**
+ * Generates starter routes around the user's location to accompany
+ * generateLocalPois — a bug-out heading and a local supply/recon loop.
+ */
+export function generateLocalRoutes(center: Coordinates): Route[] {
+  const now = '2024-01-01T00:00:00.000Z';
+  const at = (dLat: number, dLng: number): Coordinates => ({
+    latitude: +(center.latitude + dLat).toFixed(5),
+    longitude: +(center.longitude + dLng).toFixed(5),
+  });
+  return [
+    {
+      id: 'local-route-evac-1',
+      name: 'Bug-Out Route (Primary)',
+      color: '#D4822A',
+      waypoints: [
+        at(0.004, 0.003),
+        at(0.02, 0.02),
+        at(0.05, 0.045),
+        at(0.09, 0.08),
+      ],
+      notes: 'Primary evacuation heading away from the city center. Edit waypoints to follow real roads and avoid choke points.',
+      createdAt: now,
+    },
+    {
+      id: 'local-route-recon-1',
+      name: 'Local Recon Loop',
+      color: '#4CAF50',
+      waypoints: [
+        at(0.004, 0.003),
+        at(0.008, 0.006),
+        at(0.006, -0.002),
+        at(0.0, 0.0),
+        at(-0.004, -0.003),
+        at(0.004, 0.003),
+      ],
+      notes: 'Loop past the comms point, shelter, home base, and water source. Adjust to your actual locations.',
+      createdAt: now,
+    },
+  ];
+}
 

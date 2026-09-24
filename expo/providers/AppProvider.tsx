@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import createContextHook from '@nkzw/create-context-hook';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Platform } from 'react-native';
 import { defaultChecklists } from '@/mocks/checklists';
 import { defaultMembers } from '@/mocks/members';
 import {
@@ -20,19 +21,27 @@ import {
 } from '@/types';
 import { defaultCommsChannels, defaultCommsRepeaters } from '@/mocks/comms';
 import { kiwixCatalog } from '@/mocks/kiwix';
-import { allSeedPois, defaultRoutes as seedRoutes } from '@/mocks/pois';
+import { allSeedPois, defaultRoutes as seedRoutes, generateLocalPois, generateLocalRoutes } from '@/mocks/pois';
 import { seedSupplies } from '@/mocks/supplies';
 import { parseOpsBackup, serializeOpsBackup } from '@/utils/opsBackup';
+import {
+  cancelAllReminders,
+  configureNotificationHandler,
+  ensureNotificationPermission,
+  rescheduleSupplyExpiryNotifications,
+  scheduleCheckInReminder,
+} from '@/utils/notifications';
 
 const STORAGE_KEY = 'griddown_app_data';
 const DATA_VERSION_KEY = 'griddown_data_version';
-const CURRENT_DATA_VERSION = 3; // Bumped when seed supplies added
+const CURRENT_DATA_VERSION = 4; // Bumped when seed checklists/supplies expanded
 const DEFAULT_CHECK_IN_HOURS = 6;
 
 const defaultAppData: AppData = {
   alertLevel: 'green',
   groupName: 'My Group',
   checkInIntervalHours: DEFAULT_CHECK_IN_HOURS,
+  remindersEnabled: false,
   members: defaultMembers,
   supplies: seedSupplies,
   checklists: defaultChecklists,
@@ -43,11 +52,47 @@ const defaultAppData: AppData = {
   kiwixLibrary: [],
 };
 
+/**
+ * One-shot location acquisition for first-launch POI seeding.
+ * Returns null on denial, timeout, or error — callers fall back to defaults.
+ */
+async function acquireSeedLocation(): Promise<Coordinates | null> {
+  try {
+    if (Platform.OS === 'web') {
+      if (!navigator.geolocation) return null;
+      return await new Promise<Coordinates | null>((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (position) =>
+            resolve({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            }),
+          () => resolve(null),
+          { timeout: 4000 }
+        );
+      });
+    }
+    const Location = require('expo-location');
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') return null;
+    const loc = await Promise.race([
+      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
+    ]);
+    if (!loc) return null;
+    return { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+  } catch (e) {
+    console.log('Seed location unavailable:', e);
+    return null;
+  }
+}
+
 export const [AppProvider, useAppData] = createContextHook(() => {
   const queryClient = useQueryClient();
   const [alertLevel, setAlertLevel] = useState<AlertLevel>('green');
   const [groupName, setGroupName] = useState<string>('My Group');
   const [checkInIntervalHours, setCheckInIntervalHours] = useState<number>(DEFAULT_CHECK_IN_HOURS);
+  const [remindersEnabled, setRemindersEnabled] = useState<boolean>(false);
   const [members, setMembers] = useState<GroupMember[]>(defaultMembers);
   const [supplies, setSupplies] = useState<SupplyItem[]>(seedSupplies);
   const [checklists, setChecklists] = useState<Checklist[]>(defaultChecklists);
@@ -64,8 +109,8 @@ export const [AppProvider, useAppData] = createContextHook(() => {
         const stored = await AsyncStorage.getItem(STORAGE_KEY);
         if (stored) {
           const parsed = JSON.parse(stored) as AppData;
-          // Merge any missing seed POIs and routes into saved data
-          // This ensures new seed data appears even if the user has existing data
+          // Merge any missing seed POIs, routes, checklists, and supplies into
+          // saved data so new seed content appears for existing users
           const versionStr = await AsyncStorage.getItem(DATA_VERSION_KEY);
           const savedVersion = versionStr ? parseInt(versionStr, 10) : 0;
           if (savedVersion < CURRENT_DATA_VERSION) {
@@ -79,16 +124,33 @@ export const [AppProvider, useAppData] = createContextHook(() => {
             if (missingRoutes.length > 0) {
               parsed.routes = [...parsed.routes, ...missingRoutes];
             }
-            if (!parsed.supplies || parsed.supplies.length === 0) {
-              parsed.supplies = seedSupplies;
+            const existingChecklistIds = new Set((parsed.checklists ?? []).map((c) => c.id));
+            const missingChecklists = defaultChecklists.filter((c) => !existingChecklistIds.has(c.id));
+            if (missingChecklists.length > 0) {
+              parsed.checklists = [...(parsed.checklists ?? []), ...missingChecklists];
+            }
+            const existingSupplyIds = new Set((parsed.supplies ?? []).map((s) => s.id));
+            const missingSupplies = seedSupplies.filter((s) => !existingSupplyIds.has(s.id));
+            if (missingSupplies.length > 0) {
+              parsed.supplies = [...(parsed.supplies ?? []), ...missingSupplies];
             }
             await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
             await AsyncStorage.setItem(DATA_VERSION_KEY, String(CURRENT_DATA_VERSION));
           }
           return parsed;
         }
-        // No saved data — write defaults and version
+        // First launch — seed POIs/routes around the user's actual location
+        // when possible, falling back to the bundled St. Louis demo data.
+        const seedData: AppData = { ...defaultAppData };
+        const loc = await acquireSeedLocation();
+        if (loc) {
+          console.log('Seeding local POIs around', loc);
+          seedData.pois = generateLocalPois(loc);
+          seedData.routes = generateLocalRoutes(loc);
+        }
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(seedData));
         await AsyncStorage.setItem(DATA_VERSION_KEY, String(CURRENT_DATA_VERSION));
+        return seedData;
       } catch (e) {
         console.log('Error loading app data:', e);
       }
@@ -101,6 +163,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
       setAlertLevel(dataQuery.data.alertLevel);
       setGroupName(dataQuery.data.groupName);
       setCheckInIntervalHours(dataQuery.data.checkInIntervalHours ?? DEFAULT_CHECK_IN_HOURS);
+      setRemindersEnabled(dataQuery.data.remindersEnabled ?? false);
       setMembers(dataQuery.data.members);
       setSupplies(dataQuery.data.supplies);
       setChecklists(dataQuery.data.checklists);
@@ -128,6 +191,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
         alertLevel,
         groupName,
         checkInIntervalHours,
+        remindersEnabled,
         members,
         supplies,
         checklists,
@@ -140,8 +204,38 @@ export const [AppProvider, useAppData] = createContextHook(() => {
       };
       saveMutation.mutate(data);
     },
-    [alertLevel, groupName, checkInIntervalHours, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary, saveMutation]
+    [alertLevel, groupName, checkInIntervalHours, remindersEnabled, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary, saveMutation]
   );
+
+  const updateRemindersEnabled = useCallback(
+    (enabled: boolean) => {
+      setRemindersEnabled(enabled);
+      persistData({ remindersEnabled: enabled });
+    },
+    [persistData]
+  );
+
+  // Drives all local notifications from a single effect: check-in reminder
+  // follows the cadence setting, supply alerts follow the inventory. Turning
+  // reminders off cancels everything; permission failure disables the toggle.
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    if (!remindersEnabled) {
+      void cancelAllReminders();
+      return;
+    }
+    void (async () => {
+      const granted = await ensureNotificationPermission();
+      if (!granted) {
+        setRemindersEnabled(false);
+        persistData({ remindersEnabled: false });
+        return;
+      }
+      configureNotificationHandler();
+      await scheduleCheckInReminder(checkInIntervalHours);
+      await rescheduleSupplyExpiryNotifications(supplies);
+    })();
+  }, [remindersEnabled, checkInIntervalHours, supplies, persistData]);
 
   const updateAlertLevel = useCallback(
     (level: AlertLevel) => {
@@ -469,6 +563,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
     alertLevel,
     groupName,
     checkInIntervalHours,
+    remindersEnabled,
     members,
     supplies,
     checklists,
@@ -477,7 +572,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
     commsChannels,
     commsRepeaters,
     kiwixLibrary,
-  }), [alertLevel, groupName, checkInIntervalHours, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary]);
+  }), [alertLevel, groupName, checkInIntervalHours, remindersEnabled, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary]);
 
   const exportOpsBackup = useCallback(() => {
     return serializeOpsBackup(currentSnapshot());
@@ -488,6 +583,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
       setAlertLevel(incoming.alertLevel);
       setGroupName(incoming.groupName);
       setCheckInIntervalHours(incoming.checkInIntervalHours ?? DEFAULT_CHECK_IN_HOURS);
+      setRemindersEnabled(incoming.remindersEnabled ?? false);
       setMembers(incoming.members);
       setSupplies(incoming.supplies);
       setChecklists(incoming.checklists);
@@ -540,6 +636,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
     alertLevel,
     groupName,
     checkInIntervalHours,
+    remindersEnabled,
     members,
     supplies,
     checklists,
@@ -549,6 +646,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
     updateAlertLevel,
     updateGroupName,
     updateCheckInInterval,
+    updateRemindersEnabled,
     checkInMember,
     addMember,
     updateMember,

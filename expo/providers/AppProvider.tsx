@@ -42,6 +42,7 @@ const defaultAppData: AppData = {
   groupName: 'My Group',
   checkInIntervalHours: DEFAULT_CHECK_IN_HOURS,
   remindersEnabled: false,
+  shakeSosEnabled: true,
   members: defaultMembers,
   supplies: seedSupplies,
   checklists: defaultChecklists,
@@ -93,6 +94,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
   const [groupName, setGroupName] = useState<string>('My Group');
   const [checkInIntervalHours, setCheckInIntervalHours] = useState<number>(DEFAULT_CHECK_IN_HOURS);
   const [remindersEnabled, setRemindersEnabled] = useState<boolean>(false);
+  const [shakeSosEnabled, setShakeSosEnabled] = useState<boolean>(true);
   const [members, setMembers] = useState<GroupMember[]>(defaultMembers);
   const [supplies, setSupplies] = useState<SupplyItem[]>(seedSupplies);
   const [checklists, setChecklists] = useState<Checklist[]>(defaultChecklists);
@@ -164,6 +166,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
       setGroupName(dataQuery.data.groupName);
       setCheckInIntervalHours(dataQuery.data.checkInIntervalHours ?? DEFAULT_CHECK_IN_HOURS);
       setRemindersEnabled(dataQuery.data.remindersEnabled ?? false);
+      setShakeSosEnabled(dataQuery.data.shakeSosEnabled ?? true);
       setMembers(dataQuery.data.members);
       setSupplies(dataQuery.data.supplies);
       setChecklists(dataQuery.data.checklists);
@@ -192,6 +195,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
         groupName,
         checkInIntervalHours,
         remindersEnabled,
+        shakeSosEnabled,
         members,
         supplies,
         checklists,
@@ -204,7 +208,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
       };
       saveMutation.mutate(data);
     },
-    [alertLevel, groupName, checkInIntervalHours, remindersEnabled, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary, saveMutation]
+    [alertLevel, groupName, checkInIntervalHours, remindersEnabled, shakeSosEnabled, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary, saveMutation]
   );
 
   const updateRemindersEnabled = useCallback(
@@ -236,6 +240,14 @@ export const [AppProvider, useAppData] = createContextHook(() => {
       await rescheduleSupplyExpiryNotifications(supplies);
     })();
   }, [remindersEnabled, checkInIntervalHours, supplies, persistData]);
+
+  const updateShakeSos = useCallback(
+    (enabled: boolean) => {
+      setShakeSosEnabled(enabled);
+      persistData({ shakeSosEnabled: enabled });
+    },
+    [persistData]
+  );
 
   const updateAlertLevel = useCallback(
     (level: AlertLevel) => {
@@ -564,6 +576,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
     groupName,
     checkInIntervalHours,
     remindersEnabled,
+    shakeSosEnabled,
     members,
     supplies,
     checklists,
@@ -572,7 +585,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
     commsChannels,
     commsRepeaters,
     kiwixLibrary,
-  }), [alertLevel, groupName, checkInIntervalHours, remindersEnabled, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary]);
+  }), [alertLevel, groupName, checkInIntervalHours, remindersEnabled, shakeSosEnabled, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary]);
 
   const exportOpsBackup = useCallback(() => {
     return serializeOpsBackup(currentSnapshot());
@@ -637,6 +650,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
     groupName,
     checkInIntervalHours,
     remindersEnabled,
+    shakeSosEnabled,
     members,
     supplies,
     checklists,
@@ -647,6 +661,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
     updateGroupName,
     updateCheckInInterval,
     updateRemindersEnabled,
+    updateShakeSos,
     checkInMember,
     addMember,
     updateMember,

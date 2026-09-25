@@ -46,6 +46,34 @@ enum NotificationsService {
             .removePendingNotificationRequests(withIdentifiers: [supplyPrefix + id])
     }
 
+    /// Fires an immediate storm warning when the barometer detects a rapid
+    /// pressure drop. Fire-and-forget: delivery failures are ignored.
+    static func sendStormWarning(ratePerHour: Double) {
+        let content = UNMutableNotificationContent()
+        content.title = "Pressure Falling Fast"
+        content.body = String(
+            format: "Barometric pressure is dropping %.1f hPa/hr — deteriorating weather possible. Secure gear and check shelter.",
+            abs(ratePerHour)
+        )
+        content.sound = .default
+        let request = UNNotificationRequest(
+            identifier: "griddown.storm.\(UUID().uuidString)", content: content, trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
+    }
+
+    /// Fires an immediate test notification so users can verify reminders work.
+    static func sendTest() {
+        let content = UNMutableNotificationContent()
+        content.title = "GRIDDOWN Reminders Active"
+        content.body = "Check-in reminders and supply expiry alerts will appear here."
+        content.sound = .default
+        let request = UNNotificationRequest(
+            identifier: "griddown.test.\(UUID().uuidString)", content: content, trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
+    }
+
     /// Schedules one alert fired 30 days before the item's expiration date
     /// (immediately if already inside the window). Past dates are skipped.
     static func scheduleSupplyReminder(_ item: SupplyItem) {

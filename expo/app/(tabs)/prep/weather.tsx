@@ -24,6 +24,8 @@ import {
   Eye,
   Gauge,
   ArrowUp,
+  ArrowDown,
+  Minus,
   Sunrise,
   Sunset,
   RefreshCw,
@@ -33,6 +35,9 @@ import {
 import { useQuery } from '@tanstack/react-query';
 
 import Colors from '@/constants/colors';
+import { useAppData } from '@/providers/AppProvider';
+import { useBarometer, PressureTrend } from '@/utils/barometer';
+import { sendStormWarningNotification } from '@/utils/notifications';
 import { WeatherData, WeatherForecastDay, WeatherForecastHour, Coordinates } from '@/types';
 import { WEATHER_CODES } from '@/mocks/comms';
 
@@ -82,6 +87,17 @@ export default function WeatherScreen() {
   const [location, setLocation] = useState<Coordinates | null>(null);
   const [locationError, setLocationError] = useState<string>('');
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const { remindersEnabled } = useAppData();
+  const barometer = useBarometer();
+  const stormNotified = useRef(false);
+
+  // One storm warning per session when the device barometer detects a rapid
+  // drop — only when reminders are on, since that guarantees permission.
+  useEffect(() => {
+    if (!remindersEnabled || !barometer.stormRisk || stormNotified.current) return;
+    stormNotified.current = true;
+    void sendStormWarningNotification(barometer.ratePerHour ?? 0);
+  }, [remindersEnabled, barometer.stormRisk, barometer.ratePerHour]);
 
   useEffect(() => {
     Animated.loop(
@@ -283,6 +299,57 @@ export default function WeatherScreen() {
               value={`${Math.round(currentWeather.pressure)} hPa`}
             />
           </View>
+        </View>
+      )}
+
+      {barometer.supported && barometer.pressure != null && (
+        <View style={styles.barometerCard}>
+          <View style={styles.barometerHeader}>
+            <Gauge color={Colors.orangeLight} size={14} />
+            <Text style={styles.barometerTitle}>DEVICE BAROMETER</Text>
+          </View>
+          <View style={styles.barometerRow}>
+            <Text style={styles.barometerValue}>{barometer.pressure.toFixed(1)}</Text>
+            <Text style={styles.barometerUnit}>hPa</Text>
+            <View
+              style={[
+                styles.trendChip,
+                barometer.trend === 'falling' && styles.trendChipFalling,
+                barometer.trend === 'rising' && styles.trendChipRising,
+              ]}
+            >
+              {barometer.trend === 'falling' ? (
+                <ArrowDown color={Colors.statusRed} size={12} />
+              ) : barometer.trend === 'rising' ? (
+                <ArrowUp color={'#64B5F6'} size={12} />
+              ) : (
+                <Minus color={Colors.textMuted} size={12} />
+              )}
+              <Text
+                style={[
+                  styles.trendText,
+                  barometer.trend === 'falling' && { color: Colors.statusRed },
+                  barometer.trend === 'rising' && { color: '#64B5F6' },
+                ]}
+              >
+                {barometer.trend === 'steady'
+                  ? 'STEADY'
+                  : `${barometer.trend === 'falling' ? '-' : '+'}${Math.abs(barometer.ratePerHour ?? 0).toFixed(1)} hPa/hr`}
+              </Text>
+            </View>
+          </View>
+          {barometer.stormRisk ? (
+            <View style={styles.stormWarning}>
+              <CloudLightning color={Colors.statusRed} size={14} />
+              <Text style={styles.stormWarningText}>
+                Rapid pressure drop — deteriorating weather possible. Secure shelter and gear.
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.barometerNote}>
+              Falling pressure often precedes storms — watch this trend when planning movement.
+            </Text>
+          )}
         </View>
       )}
 
@@ -583,6 +650,89 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: 11,
     marginTop: 2,
+  },
+  barometerCard: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 12,
+  },
+  barometerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  barometerTitle: {
+    color: Colors.textMuted,
+    fontSize: 10,
+    fontWeight: '700' as const,
+    letterSpacing: 2,
+  },
+  barometerRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+  },
+  barometerValue: {
+    color: Colors.textPrimary,
+    fontSize: 32,
+    fontWeight: '800' as const,
+    fontVariant: ['tabular-nums'] as any,
+  },
+  barometerUnit: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600' as const,
+  },
+  trendChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.bgElevated,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginLeft: 'auto' as const,
+  },
+  trendChipFalling: {
+    backgroundColor: 'rgba(244, 67, 54, 0.12)',
+  },
+  trendChipRising: {
+    backgroundColor: 'rgba(100, 181, 246, 0.12)',
+  },
+  trendText: {
+    color: Colors.textMuted,
+    fontSize: 10,
+    fontWeight: '700' as const,
+    letterSpacing: 0.5,
+    fontVariant: ['tabular-nums'] as any,
+  },
+  stormWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    backgroundColor: 'rgba(244, 67, 54, 0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(244, 67, 54, 0.35)',
+    borderRadius: 8,
+    padding: 10,
+  },
+  stormWarningText: {
+    flex: 1,
+    color: Colors.statusRed,
+    fontSize: 12,
+    fontWeight: '600' as const,
+    lineHeight: 16,
+  },
+  barometerNote: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    marginTop: 10,
+    lineHeight: 15,
   },
   sunCard: {
     flexDirection: 'row',

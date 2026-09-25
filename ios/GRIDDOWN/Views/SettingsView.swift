@@ -119,6 +119,54 @@ struct SettingsView: View {
                             .foregroundStyle(Theme.textPrimary)
                     }
                     .tint(Theme.statusGreen)
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        Task {
+                            if await NotificationsService.requestAuthorization() {
+                                NotificationsService.sendTest()
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "paperplane.fill").font(.system(size: 13, weight: .bold))
+                            Text("Send Test Notification").font(.system(size: 13, weight: .bold))
+                        }
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Theme.olive)
+                        .clipShape(.rect(cornerRadius: 8))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(16)
+                .background(Theme.bgCard)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+                .clipShape(.rect(cornerRadius: 12))
+
+                SectionLabel(text: "SENSORS")
+
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "iphone.radiowaves.left.and.right")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Theme.oliveLight)
+                        Text("Shake for SOS")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    Text("Shake the phone firmly to trigger a RED alert confirmation. Useful when you can't reach the screen. Keep it off if you carry the device loosely.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.textMuted)
+                    Toggle(isOn: Binding(
+                        get: { store.shakeSosEnabled },
+                        set: { store.updateShakeSos($0) }
+                    )) {
+                        Text(store.shakeSosEnabled ? "Shake SOS On" : "Shake SOS Off")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    .tint(Theme.statusGreen)
                 }
                 .padding(16)
                 .background(Theme.bgCard)

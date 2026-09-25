@@ -148,6 +148,7 @@ struct MemberDetailView: View {
     @Environment(\.dismiss) var dismiss
     @State private var showingEdit = false
     @State private var showingRemoveConfirm = false
+    @State private var showingSmsUnavailable = false
 
     private var liveMember: GroupMember {
         store.members.first(where: { $0.id == member.id }) ?? member
@@ -276,6 +277,26 @@ struct MemberDetailView: View {
                         .background(Theme.bgCard)
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
                         .clipShape(.rect(cornerRadius: 12))
+                        Button {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            let body = "[\(store.groupName)] Status check — please acknowledge when you receive this."
+                            if !SmsService.openViaUrl(recipients: [phone], body: body) {
+                                showingSmsUnavailable = true
+                            }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "message.fill")
+                                    .font(.system(size: 14, weight: .semibold))
+                                Text("Send Text")
+                                    .font(.system(size: 14, weight: .bold))
+                            }
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 11)
+                            .background(Theme.oliveMuted)
+                            .clipShape(.rect(cornerRadius: 8))
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
 
@@ -304,6 +325,11 @@ struct MemberDetailView: View {
         .background(Theme.bg.ignoresSafeArea())
         .navigationTitle(member.name)
         .navigationBarTitleDisplayMode(.inline)
+        .alert("Messaging Unavailable", isPresented: $showingSmsUnavailable) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("This device cannot send SMS messages.")
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {

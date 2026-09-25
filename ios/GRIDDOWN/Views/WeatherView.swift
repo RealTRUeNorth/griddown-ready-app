@@ -2,6 +2,7 @@ import SwiftUI
 import CoreLocation
 
 struct WeatherView: View {
+    @Environment(AppStore.self) private var store
     @State private var location: Coordinates?
     @State private var locationError: String = ""
     @State private var current: WeatherData?
@@ -12,6 +13,8 @@ struct WeatherView: View {
     @State private var lastUpdated: String = ""
     @State private var isShowingCached: Bool = false
     @State private var cachedSavedAt: Date?
+    @State private var barometer = BarometerService()
+    @State private var stormNotified = false
 
     private let locationManager = LocationManager()
 
@@ -48,6 +51,10 @@ struct WeatherView: View {
                     operationalImpactSection(current)
                 }
 
+                if barometer.isAvailable, let pressure = barometer.reading.pressure {
+                    barometerCard(pressure)
+                }
+
                 footer
             }
             .padding(16)
@@ -62,6 +69,13 @@ struct WeatherView: View {
             if hasError && !isLoading { errorView }
         }
         .task { await initializeLocation() }
+        .onAppear { barometer.start() }
+        .onDisappear { barometer.stop() }
+        .onChange(of: barometer.reading.stormRisk) { _, risky in
+            guard risky, !stormNotified, store.remindersEnabled else { return }
+            stormNotified = true
+            NotificationsService.sendStormWarning(ratePerHour: barometer.reading.ratePerHour ?? 0)
+        }
     }
 
     private var loadingView: some View {
@@ -200,6 +214,93 @@ struct WeatherView: View {
         .padding(12)
         .background(Theme.bgElevated)
         .clipShape(.rect(cornerRadius: 10))
+    }
+
+    private func barometerCard(_ pressure: Double) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: "gauge.high")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Theme.orangeLight)
+                Text("DEVICE BAROMETER")
+                    .font(.system(size: 10, weight: .bold))
+                    .tracking(2)
+                    .foregroundStyle(Theme.textMuted)
+            }
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(String(format: "%.1f", pressure))
+                    .font(.system(size: 32, weight: .heavy))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.textPrimary)
+                Text("hPa")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.textSecondary)
+                Spacer()
+                trendChip
+            }
+            if barometer.reading.stormRisk {
+                HStack(spacing: 8) {
+                    Image(systemName: "cloud.bolt.rain.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Theme.statusRed)
+                    Text("Rapid pressure drop — deteriorating weather possible. Secure shelter and gear.")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.statusRed)
+                }
+                .padding(10)
+                .background(Theme.statusRed.opacity(0.1))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.statusRed.opacity(0.35), lineWidth: 1))
+                .clipShape(.rect(cornerRadius: 8))
+            } else {
+                Text("Falling pressure often precedes storms — watch this trend when planning movement.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Theme.textMuted)
+            }
+        }
+        .padding(16)
+        .background(Theme.bgCard)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+        .clipShape(.rect(cornerRadius: 12))
+    }
+
+    private var trendChip: some View {
+        let reading = barometer.reading
+        return HStack(spacing: 4) {
+            Image(systemName: trendIcon(reading.trend))
+                .font(.system(size: 12))
+            Text(trendText(reading))
+                .font(.system(size: 10, weight: .bold))
+                .monospacedDigit()
+        }
+        .foregroundStyle(trendColor(reading.trend))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Theme.bgElevated)
+        .clipShape(.rect(cornerRadius: 6))
+    }
+
+    private func trendIcon(_ trend: BarometerService.PressureTrend) -> String {
+        switch trend {
+        case .falling: return "arrow.down"
+        case .rising: return "arrow.up"
+        case .steady: return "minus"
+        }
+    }
+
+    private func trendColor(_ trend: BarometerService.PressureTrend) -> Color {
+        switch trend {
+        case .falling: return Theme.statusRed
+        case .rising: return Color(hex: 0x64B5F6)
+        case .steady: return Theme.textMuted
+        }
+    }
+
+    private func trendText(_ reading: BarometerService.Reading) -> String {
+        switch reading.trend {
+        case .steady: return "STEADY"
+        case .falling: return String(format: "-%.1f hPa/hr", abs(reading.ratePerHour ?? 0))
+        case .rising: return String(format: "+%.1f hPa/hr", abs(reading.ratePerHour ?? 0))
+        }
     }
 
     private func sunCard(_ day: WeatherForecastDay) -> some View {

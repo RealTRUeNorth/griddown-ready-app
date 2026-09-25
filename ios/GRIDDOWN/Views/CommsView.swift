@@ -10,6 +10,11 @@ struct CommsView: View {
     @State private var editingRepeater: CommsRepeater?
     @State private var pendingDeleteChannel: CommsChannel?
     @State private var pendingDeleteRepeater: CommsRepeater?
+    @State private var showingSmsComposer = false
+    @State private var smsRecipients: [String] = []
+    @State private var smsBody = ""
+    @State private var showingSmsUnavailable = false
+    @State private var showingSmsNoNumbers = false
 
     enum CommsTab: String, CaseIterable {
         case channels, repeaters, protocols, reference
@@ -35,6 +40,30 @@ struct CommsView: View {
         .background(Theme.bg.ignoresSafeArea())
         .navigationTitle("Comms")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    prepareGroupSms()
+                } label: {
+                    Image(systemName: "message.badge.fill")
+                        .foregroundStyle(Theme.orange)
+                }
+                .accessibilityLabel("SMS group")
+            }
+        }
+        .sheet(isPresented: $showingSmsComposer) {
+            MessageComposer(recipients: smsRecipients, body: smsBody)
+        }
+        .alert("Messaging Unavailable", isPresented: $showingSmsUnavailable) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("This device cannot send SMS messages.")
+        }
+        .alert("No Phone Numbers", isPresented: $showingSmsNoNumbers) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Add phone numbers to group members first.")
+        }
         .sheet(isPresented: $showingAddChannel) {
             AddChannelView()
         }
@@ -80,6 +109,29 @@ struct CommsView: View {
                 pendingDeleteRepeater = nil
             }
             Button("Cancel", role: .cancel) { pendingDeleteRepeater = nil }
+        }
+    }
+
+    /// Opens the messaging app with every member's number pre-filled and a
+    /// status snapshot in the body — the SMS fallback when radios are down.
+    private func prepareGroupSms() {
+        let numbers = store.members
+            .compactMap { $0.phone }
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        guard !numbers.isEmpty else {
+            showingSmsNoNumbers = true
+            return
+        }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        let primary = store.commsChannels.first { $0.isPrimary == true }
+        smsRecipients = numbers
+        smsBody = "[GRIDDOWN] \(store.groupName) — alert level \(store.alertLevel.rawValue.uppercased())."
+            + (primary.map { " Primary channel: \($0.frequency) (\($0.band.rawValue))." } ?? "")
+            + " Acknowledge when received."
+        if SmsService.canSend {
+            showingSmsComposer = true
+        } else if !SmsService.openViaUrl(recipients: numbers, body: smsBody) {
+            showingSmsUnavailable = true
         }
     }
 

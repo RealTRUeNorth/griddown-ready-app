@@ -147,3 +147,40 @@ export async function cancelAllReminders(): Promise<void> {
     console.log('Could not cancel notifications:', e);
   }
 }
+
+/**
+ * Fires an immediate storm warning when the device barometer detects a
+ * rapid pressure drop. Fire-and-forget: errors are logged, never thrown.
+ */
+export async function sendStormWarningNotification(ratePerHour: number): Promise<void> {
+  if (!Notifications) return;
+  try {
+    await Notifications.scheduleNotificationAsync({
+      identifier: `griddown-storm-${Date.now()}`,
+      content: {
+        title: 'Pressure Falling Fast',
+        body: `Barometric pressure is dropping ${Math.abs(ratePerHour).toFixed(1)} hPa/hr — deteriorating weather possible. Secure gear and check shelter.`,
+        sound: false,
+      },
+    });
+  } catch (e) {
+    console.log('Storm notification failed:', e);
+  }
+}
+
+/** Fires an immediate test notification so users can verify reminders work. */
+export async function sendTestNotification(): Promise<void> {
+  if (!Notifications) return;
+  try {
+    await Notifications.scheduleNotificationAsync({
+      identifier: `griddown-test-${Date.now()}`,
+      content: {
+        title: 'GRIDDOWN Reminders Active',
+        body: 'Check-in reminders and supply expiry alerts will appear here.',
+        sound: false,
+      },
+    });
+  } catch (e) {
+    console.log('Test notification failed:', e);
+  }
+}

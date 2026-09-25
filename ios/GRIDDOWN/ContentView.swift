@@ -4,6 +4,8 @@ struct ContentView: View {
     @State private var appStore = AppStore()
     @State private var downloadManager = KiwixDownloadManager()
     @State private var tileManager = TileDownloadManager()
+    @State private var motionService = MotionService()
+    @State private var showingShakeSos = false
 
     var body: some View {
         TabView {
@@ -67,6 +69,26 @@ struct ContentView: View {
         .environment(downloadManager)
         .environment(tileManager)
         .preferredColorScheme(.dark)
+        .confirmationDialog(
+            "Shake Detected",
+            isPresented: $showingShakeSos,
+            titleVisibility: .visible
+        ) {
+            Button("Set RED Alert", role: .destructive) {
+                appStore.updateAlertLevel(.red)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Set the group alert level to RED?")
+        }
+        .task(id: appStore.shakeSosEnabled) {
+            motionService.onShake = { showingShakeSos = true }
+            if appStore.shakeSosEnabled {
+                motionService.start()
+            } else {
+                motionService.stop()
+            }
+        }
     }
 
     @ViewBuilder

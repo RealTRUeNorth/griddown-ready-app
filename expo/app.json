@@ -3,7 +3,7 @@
     "name": "GRIDDOWN",
     "slug": "griddown-ready-app",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "all",
     "icon": "./assets/images/icon.png",
     "scheme": "rork-app",
     "userInterfaceStyle": "automatic",

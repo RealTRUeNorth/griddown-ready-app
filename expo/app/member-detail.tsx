@@ -8,10 +8,11 @@ import {
   Alert,
 } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
-import { User, Phone, FileText, Trash2, Shield, Pencil, Clock, CheckCircle2 } from 'lucide-react-native';
+import { User, Phone, FileText, Trash2, Shield, Pencil, Clock, CheckCircle2, MessageCircle } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
+import { openSms } from '@/utils/sms';
 import {
   getCheckInState,
   checkInStatusLabel,
@@ -33,7 +34,8 @@ const statusLabels: Record<string, string> = {
 
 export default function MemberDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { members, removeMember, updateMember, checkInMember, checkInIntervalHours } = useAppData();
+  const { members, removeMember, updateMember, checkInMember, checkInIntervalHours, groupName } =
+    useAppData();
   const member = members.find((m) => m.id === id);
 
   const handleDelete = useCallback(() => {
@@ -57,6 +59,16 @@ export default function MemberDetailScreen() {
     checkInMember(id);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, [id, checkInMember]);
+
+  const handleText = useCallback(async () => {
+    if (!member?.phone) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const body = `[${groupName}] Status check — please acknowledge when you receive this.`;
+    const ok = await openSms([member.phone], body);
+    if (!ok) {
+      Alert.alert('Messaging Unavailable', 'Could not open the messaging app on this device.');
+    }
+  }, [member, groupName]);
 
   const cycleStatus = useCallback(() => {
     if (!member) return;
@@ -167,6 +179,14 @@ export default function MemberDetailScreen() {
               <Phone color={Colors.textSecondary} size={16} />
               <Text style={styles.infoText}>{member.phone}</Text>
             </View>
+            <TouchableOpacity
+              style={styles.textButton}
+              onPress={() => void handleText()}
+              activeOpacity={0.7}
+            >
+              <MessageCircle color={Colors.white} size={16} />
+              <Text style={styles.textButtonText}>Send Text</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -345,6 +365,21 @@ const styles = StyleSheet.create({
   checkInButtonText: {
     color: Colors.white,
     fontSize: 14,
+    fontWeight: '700' as const,
+  },
+  textButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.oliveMuted,
+    borderRadius: 8,
+    paddingVertical: 11,
+    marginTop: 8,
+  },
+  textButtonText: {
+    color: Colors.white,
+    fontSize: 13,
     fontWeight: '700' as const,
   },
   infoCard: {

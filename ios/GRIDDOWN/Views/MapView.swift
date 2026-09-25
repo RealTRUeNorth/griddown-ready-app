@@ -252,6 +252,8 @@ struct MapView: View {
         .task {
             await fetchWeatherForSuggestions()
         }
+        .onAppear { OrientationGate.isMapActive = true }
+        .onDisappear { OrientationGate.isMapActive = false }
         .alert("No Rally Points", isPresented: $showingNoRallyAlert) {
             Button("OK", role: .cancel) {}
         } message: {

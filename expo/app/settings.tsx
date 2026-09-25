@@ -10,13 +10,17 @@ import {
   Alert,
 } from 'react-native';
 import { Stack } from 'expo-router';
-import { Users, Clock, Database, Check, Bell } from 'lucide-react-native';
+import { Users, Clock, Database, Check, Bell, Vibrate, Send } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
 import { CHECK_IN_INTERVAL_OPTIONS } from '@/utils/checkin';
 import { backupCounts } from '@/utils/opsBackup';
-import { ensureNotificationPermission, isNotificationsSupported } from '@/utils/notifications';
+import {
+  ensureNotificationPermission,
+  isNotificationsSupported,
+  sendTestNotification,
+} from '@/utils/notifications';
 
 export default function SettingsScreen() {
   const {
@@ -26,6 +30,8 @@ export default function SettingsScreen() {
     updateCheckInInterval,
     remindersEnabled,
     updateRemindersEnabled,
+    shakeSosEnabled,
+    updateShakeSos,
     currentSnapshot,
   } = useAppData();
 
@@ -49,6 +55,32 @@ export default function SettingsScreen() {
     }
     updateRemindersEnabled(!remindersEnabled);
   }, [remindersEnabled, updateRemindersEnabled]);
+
+  const handleToggleShake = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS === 'web') {
+      Alert.alert('Not Available', 'Shake detection works on the mobile apps.');
+      return;
+    }
+    updateShakeSos(!shakeSosEnabled);
+  }, [shakeSosEnabled, updateShakeSos]);
+
+  const handleTestNotification = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS === 'web' || !isNotificationsSupported()) {
+      Alert.alert('Not Available', 'Notifications work on the mobile apps.');
+      return;
+    }
+    const granted = await ensureNotificationPermission();
+    if (!granted) {
+      Alert.alert(
+        'Permission Needed',
+        'Enable notifications for GRIDDOWN in system settings to receive reminders.'
+      );
+      return;
+    }
+    await sendTestNotification();
+  }, []);
 
   const handleSaveName = useCallback(() => {
     const trimmed = nameDraft.trim();
@@ -153,6 +185,38 @@ export default function SettingsScreen() {
             </Text>
             <View style={[styles.toggleDot, remindersEnabled && styles.toggleDotActive]} />
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.saveBtn, styles.saveBtnActive, styles.testBtn]}
+            onPress={() => void handleTestNotification()}
+            activeOpacity={0.7}
+            testID="test-notification-btn"
+          >
+            <Send color={Colors.white} size={14} />
+            <Text style={styles.saveBtnText}>Send Test Notification</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.sectionLabel}>SENSORS</Text>
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Vibrate color={Colors.oliveLight} size={16} />
+            <Text style={styles.cardTitle}>Shake for SOS</Text>
+          </View>
+          <Text style={styles.hint}>
+            Shake the phone firmly to trigger a RED alert confirmation. Useful when you can't reach
+            the screen. Keep it off if you carry the device loosely.
+          </Text>
+          <TouchableOpacity
+            style={styles.toggleRow}
+            onPress={handleToggleShake}
+            activeOpacity={0.7}
+            testID="shake-sos-toggle"
+          >
+            <Text style={[styles.toggleLabel, !shakeSosEnabled && styles.toggleLabelOff]}>
+              {shakeSosEnabled ? 'Shake SOS On' : 'Shake SOS Off'}
+            </Text>
+            <View style={[styles.toggleDot, shakeSosEnabled && styles.toggleDotActive]} />
+          </TouchableOpacity>
         </View>
 
         <Text style={styles.sectionLabel}>ABOUT</Text>
@@ -234,6 +298,10 @@ const styles = StyleSheet.create({
   },
   saveBtnActive: {
     backgroundColor: Colors.olive,
+  },
+  testBtn: {
+    marginTop: 12,
+    paddingVertical: 10,
   },
   saveBtnDisabled: {
     backgroundColor: Colors.bgElevated,

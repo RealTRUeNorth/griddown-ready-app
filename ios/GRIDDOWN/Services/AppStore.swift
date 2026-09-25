@@ -7,6 +7,7 @@ final class AppStore {
     var groupName: String = "My Group"
     var checkInIntervalHours: Int = 6
     var remindersEnabled: Bool = false
+    var shakeSosEnabled: Bool = true
     var members: [GroupMember] = MockData.members
     var supplies: [SupplyItem] = MockData.seedSupplies
     var checklists: [Checklist] = MockData.checklists
@@ -39,6 +40,7 @@ final class AppStore {
         groupName = decoded.groupName
         checkInIntervalHours = decoded.checkInIntervalHours
         remindersEnabled = decoded.remindersEnabled
+        shakeSosEnabled = decoded.shakeSosEnabled
         members = decoded.members
         supplies = decoded.supplies
         checklists = decoded.checklists.isEmpty ? MockData.checklists : decoded.checklists
@@ -103,7 +105,7 @@ final class AppStore {
     private func persist() {
         let data = AppData(
             alertLevel: alertLevel, groupName: groupName, checkInIntervalHours: checkInIntervalHours,
-            remindersEnabled: remindersEnabled,
+            remindersEnabled: remindersEnabled, shakeSosEnabled: shakeSosEnabled,
             members: members,
             supplies: supplies, checklists: checklists, pois: pois, routes: routes,
             commsChannels: commsChannels, commsRepeaters: commsRepeaters,
@@ -140,6 +142,11 @@ final class AppStore {
 
     func updateAlertLevel(_ level: AlertLevel) {
         alertLevel = level
+        persist()
+    }
+
+    func updateShakeSos(_ enabled: Bool) {
+        shakeSosEnabled = enabled
         persist()
     }
 
@@ -276,7 +283,7 @@ final class AppStore {
             exportedAt: ISO8601DateFormatter().string(from: Date()),
             data: AppData(
                 alertLevel: alertLevel, groupName: groupName, checkInIntervalHours: checkInIntervalHours,
-                remindersEnabled: remindersEnabled,
+                remindersEnabled: remindersEnabled, shakeSosEnabled: shakeSosEnabled,
                 members: members,
                 supplies: supplies, checklists: checklists, pois: pois, routes: routes,
                 commsChannels: commsChannels, commsRepeaters: commsRepeaters,
@@ -309,6 +316,7 @@ final class AppStore {
         groupName = trimmedName.isEmpty ? "My Group" : trimmedName
         checkInIntervalHours = payload.checkInIntervalHours ?? 6
         remindersEnabled = payload.remindersEnabled ?? false
+        shakeSosEnabled = payload.shakeSosEnabled ?? true
         members = payload.members ?? []
         supplies = payload.supplies ?? []
         checklists = payload.checklists ?? []

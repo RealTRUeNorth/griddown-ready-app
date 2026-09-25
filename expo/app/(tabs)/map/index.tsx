@@ -12,7 +12,7 @@ import {
   TextInput,
   FlatList,
 } from 'react-native';
-import { router, Href } from 'expo-router';
+import { router, Href, useFocusEffect } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import {
   MapPin,
@@ -92,6 +92,36 @@ export default function MapScreen() {
   const mapRef = useRef<any>(null);
   const drawerAnim = useRef(new Animated.Value(0)).current;
   const mapPacks = useMapPacks();
+
+  // The tactical map is the one screen that may rotate — every other screen
+  // stays portrait. Unlock on focus, restore the portrait lock on blur.
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === 'web') return undefined;
+      let active = true;
+      void (async () => {
+        try {
+          const ScreenOrientation = require('expo-screen-orientation');
+          if (active) {
+            await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.ALL);
+          }
+        } catch (e) {
+          console.log('Orientation unlock failed:', e);
+        }
+      })();
+      return () => {
+        active = false;
+        void (async () => {
+          try {
+            const ScreenOrientation = require('expo-screen-orientation');
+            await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+          } catch {
+            // Root layout already requested the portrait lock
+          }
+        })();
+      };
+    }, [])
+  );
   const [offlineMode, setOfflineMode] = useState<boolean>(false);
   const [currentRegion, setCurrentRegion] = useState<MapRegion | null>(null);
 

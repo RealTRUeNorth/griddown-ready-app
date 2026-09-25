@@ -27,10 +27,12 @@ import {
   Volume2,
   Hash,
   Trash2,
+  MessageSquareText,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
+import { openSms } from '@/utils/sms';
 import { CommsChannel, CommsRepeater } from '@/types';
 import {
   BAND_INFO,
@@ -46,6 +48,8 @@ export default function CommsScreen() {
     removeCommsChannel,
     removeCommsRepeater,
     alertLevel,
+    groupName,
+    members,
   } = useAppData();
 
   const [activeTab, setActiveTab] = useState<TabId>('channels');
@@ -96,6 +100,28 @@ export default function CommsScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setExpandedProtocol((prev) => (prev === id ? null : id));
   }, []);
+
+  // Opens the messaging app with every member's number pre-filled and a
+  // status snapshot in the body — the SMS fallback when radios are down.
+  const handleBroadcast = useCallback(async () => {
+    const numbers = members
+      .map((m) => m.phone)
+      .filter((p): p is string => !!p && p.trim().length > 0);
+    if (numbers.length === 0) {
+      Alert.alert('No Phone Numbers', 'Add phone numbers to group members first.');
+      return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const primary = commsChannels.find((c) => c.isPrimary);
+    const body =
+      `[GRIDDOWN] ${groupName} — alert level ${alertLevel.toUpperCase()}.` +
+      (primary ? ` Primary channel: ${primary.frequency} (${primary.band}).` : '') +
+      ' Acknowledge when received.';
+    const ok = await openSms(numbers, body);
+    if (!ok) {
+      Alert.alert('Messaging Unavailable', 'Could not open the messaging app on this device.');
+    }
+  }, [members, commsChannels, groupName, alertLevel]);
 
   const alertBorderColor =
     alertLevel === 'red'
@@ -161,16 +187,26 @@ export default function CommsScreen() {
         <View>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>CHANNEL ASSIGNMENTS</Text>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                router.push('/add-channel' as Href);
-              }}
-            >
-              <Plus color={Colors.white} size={14} />
-              <Text style={styles.addButtonText}>ADD</Text>
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                style={[styles.addButton, styles.broadcastButton]}
+                onPress={() => void handleBroadcast()}
+                activeOpacity={0.7}
+              >
+                <MessageSquareText color={Colors.white} size={13} />
+                <Text style={styles.addButtonText}>SMS GROUP</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push('/add-channel' as Href);
+                }}
+              >
+                <Plus color={Colors.white} size={14} />
+                <Text style={styles.addButtonText}>ADD</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {commsChannels.map((channel) => (
@@ -654,6 +690,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700' as const,
     letterSpacing: 2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  broadcastButton: {
+    backgroundColor: Colors.oliveMuted,
   },
   addButton: {
     flexDirection: 'row',

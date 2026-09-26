@@ -173,6 +173,26 @@ struct SettingsView: View {
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
                 .clipShape(.rect(cornerRadius: 12))
 
+                SectionLabel(text: "STARTER CONTENT")
+
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Theme.oliveLight)
+                        Text("Sample Data Notice")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    Text("Your kit starts with sample members, supplies, POIs, and routes so you can explore before entering real data. Sample supplies are marked SAMPLE and include intentionally expired items that demonstrate the expiry alert system — they are not your inventory. Edit or delete each record and add your own.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.textMuted)
+                }
+                .padding(16)
+                .background(Theme.bgCard)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+                .clipShape(.rect(cornerRadius: 12))
+
                 SectionLabel(text: "ABOUT")
 
                 VStack(alignment: .leading, spacing: 12) {

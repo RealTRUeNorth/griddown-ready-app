@@ -132,6 +132,8 @@ struct GuideDetailView: View {
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
                     .clipShape(.rect(cornerRadius: 12))
                 }
+
+                guideDisclaimer
             }
             .padding(16)
             .padding(.bottom, 40)
@@ -139,6 +141,45 @@ struct GuideDetailView: View {
         .background(Theme.bg.ignoresSafeArea())
         .navigationTitle(guide.title)
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var guideDisclaimer: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "cross.case.fill")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.statusAmber)
+                Text("REFERENCE & DISCLAIMER")
+                    .font(.system(size: 10, weight: .bold))
+                    .tracking(2)
+                    .foregroundStyle(Theme.textMuted)
+            }
+            Text(guideSourceText)
+                .font(.system(size: 11))
+                .foregroundStyle(Theme.textMuted)
+                .lineSpacing(3)
+        }
+        .padding(14)
+        .background(Theme.bgCard)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+        .clipShape(.rect(cornerRadius: 12))
+    }
+
+    /// Attributes guide content to widely published public-health sources and
+    /// states the educational-only scope.
+    private var guideSourceText: String {
+        let sources: String
+        switch guide.category.lowercased() {
+        case "medical":
+            sources = "Based on widely published American Red Cross / American Heart Association first-aid & CPR and WHO/CDC oral-rehydration guidance."
+        case "survival", "supplies":
+            sources = "Based on widely published FEMA/Ready.gov and CDC emergency-preparedness and water-treatment guidance."
+        case "comms":
+            sources = "Based on widely published ARRL and FEMA emergency-communications guidance."
+        default:
+            sources = "Based on widely published FEMA/Ready.gov emergency-preparedness guidance."
+        }
+        return sources + " Educational reference only — always defer to trained medical professionals and local authorities in a real emergency."
     }
 }
 

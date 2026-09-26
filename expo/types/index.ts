@@ -27,6 +27,8 @@ export interface SupplyItem {
   minimumQuantity: number;
   expirationDate?: string;
   notes?: string;
+  /** True for first-launch sample inventory — flagged in the UI so demo records stay distinguishable from real data. */
+  isSample?: boolean;
 }
 
 export type SupplyCategory = 'water' | 'food' | 'medical' | 'tools' | 'comms' | 'shelter' | 'clothing' | 'documents' | 'other';

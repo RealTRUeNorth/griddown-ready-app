@@ -218,7 +218,14 @@ export default function SuppliesScreen() {
                   >
                     <View style={styles.supplyIcon}>{categoryIcons[item.category]}</View>
                     <View style={styles.supplyInfo}>
-                      <Text style={styles.supplyName}>{item.name}</Text>
+                      <View style={styles.nameRow}>
+                        <Text style={styles.supplyName}>{item.name}</Text>
+                        {item.isSample && (
+                          <View style={styles.sampleBadge}>
+                            <Text style={styles.sampleText}>SAMPLE</Text>
+                          </View>
+                        )}
+                      </View>
                       <Text style={styles.supplyQty}>
                         {item.quantity} {item.unit}
                         {item.expirationDate ? ` · Exp: ${item.expirationDate}` : ''}
@@ -370,6 +377,23 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     fontSize: 14,
     fontWeight: '600' as const,
+  },
+  nameRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+  },
+  sampleBadge: {
+    backgroundColor: Colors.bgElevated,
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  sampleText: {
+    color: Colors.textMuted,
+    fontSize: 8,
+    fontWeight: '800' as const,
+    letterSpacing: 1,
   },
   supplyQty: {
     color: Colors.textSecondary,

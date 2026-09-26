@@ -130,6 +130,9 @@ struct SupplyItem: Identifiable, Codable, Hashable, Sendable {
     var minimumQuantity: Int
     var expirationDate: String?
     var notes: String?
+    /// True for first-launch sample inventory — flagged in the UI so demo
+    /// records stay distinguishable from a user's real operational data.
+    var isSample: Bool?
 }
 
 struct ChecklistItem: Identifiable, Codable, Hashable, Sendable {

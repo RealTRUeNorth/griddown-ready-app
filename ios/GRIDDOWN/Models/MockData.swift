@@ -31,72 +31,86 @@ enum MockData {
         SupplyItem(
             id: "s_water_1", name: "Bottled Water", category: .water,
             quantity: 18, unit: "gal", minimumQuantity: 24,
-            notes: "Garage rack — 6-pack cases"
+            notes: "Garage rack — 6-pack cases",
+            isSample: true
         ),
         SupplyItem(
             id: "s_water_2", name: "Sawyer Squeeze Filter", category: .water,
             quantity: 2, unit: "units", minimumQuantity: 1,
-            notes: "Backflush kit taped to each filter"
+            notes: "Backflush kit taped to each filter",
+            isSample: true
         ),
         SupplyItem(
             id: "s_food_1", name: "MRE Cases", category: .food,
             quantity: 4, unit: "cases", minimumQuantity: 2,
-            expirationDate: "2026-09-15", notes: "Hall closet, top shelf"
+            expirationDate: "2026-09-15", notes: "Hall closet, top shelf",
+            isSample: true
         ),
         SupplyItem(
             id: "s_food_2", name: "White Rice", category: .food,
             quantity: 25, unit: "lbs", minimumQuantity: 10,
-            expirationDate: "2028-01", notes: "Food-grade buckets with gamma lids"
+            expirationDate: "2028-01", notes: "Food-grade buckets with gamma lids",
+            isSample: true
         ),
         SupplyItem(
             id: "s_food_3", name: "Pinto Beans", category: .food,
             quantity: 20, unit: "lbs", minimumQuantity: 10,
-            expirationDate: "2028-05", notes: "Buckets with oxygen absorbers"
+            expirationDate: "2028-05", notes: "Buckets with oxygen absorbers",
+            isSample: true
         ),
         SupplyItem(
             id: "s_food_4", name: "Canned Soup", category: .food,
             quantity: 24, unit: "cans", minimumQuantity: 12,
-            expirationDate: "2027-06", notes: "Pantry shelf — rotate FIFO"
+            expirationDate: "2027-06", notes: "Pantry shelf — rotate FIFO",
+            isSample: true
         ),
         SupplyItem(
             id: "s_food_5", name: "Rolled Oats", category: .food,
             quantity: 12, unit: "lbs", minimumQuantity: 6,
-            expirationDate: "2027-11", notes: "Mylar bags inside 5-gal bucket"
+            expirationDate: "2027-11", notes: "Mylar bags inside 5-gal bucket",
+            isSample: true
         ),
         SupplyItem(
             id: "s_med_1", name: "Ibuprofen", category: .medical,
             quantity: 1, unit: "bottles", minimumQuantity: 2,
-            expirationDate: "2026-03-01", notes: "Med kit — expired, replace"
+            expirationDate: "2026-03-01", notes: "Med kit — expired, replace",
+            isSample: true
         ),
         SupplyItem(
             id: "s_med_2", name: "First Aid Kit — Large", category: .medical,
             quantity: 1, unit: "kits", minimumQuantity: 1,
-            notes: "Trauma kit incl. tourniquets"
+            notes: "Trauma kit incl. tourniquets",
+            isSample: true
         ),
         SupplyItem(
             id: "s_med_3", name: "Electrolyte Powder", category: .medical,
             quantity: 3, unit: "tubs", minimumQuantity: 2,
-            expirationDate: "2026-10-15", notes: "Oral rehydration — check dose per liter"
+            expirationDate: "2026-10-15", notes: "Oral rehydration — check dose per liter",
+            isSample: true
         ),
         SupplyItem(
             id: "s_tools_1", name: "AA Batteries", category: .tools,
             quantity: 48, unit: "count", minimumQuantity: 24,
-            notes: "Rotate — flashlight stock"
+            notes: "Rotate — flashlight stock",
+            isSample: true
         ),
         SupplyItem(
             id: "s_tools_2", name: "Duct Tape", category: .tools,
             quantity: 4, unit: "rolls", minimumQuantity: 2,
-            notes: "Garage pegboard"
+            notes: "Garage pegboard",
+            isSample: true
         ),
         SupplyItem(
             id: "s_comms_1", name: "FRS Two-Way Radios", category: .comms,
             quantity: 6, unit: "units", minimumQuantity: 4,
-            notes: "Charged monthly — see Comms tab channels"
+            notes: "Charged monthly — see Comms tab channels",
+            isSample: true
         ),
         SupplyItem(
             id: "s_shelter_1", name: "Tarps — 10×12", category: .shelter,
             quantity: 4, unit: "units", minimumQuantity: 2,
-            notes: "With grommets + bungee assortment"
+            notes: "With grommets + bungee assortment",
+            isSample: true
         ),
     ]
 

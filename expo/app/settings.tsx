@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { Stack } from 'expo-router';
-import { Users, Clock, Database, Check, Bell, Vibrate, Send } from 'lucide-react-native';
+import { Users, Clock, Database, Check, Bell, Vibrate, Send, Sparkles } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
@@ -217,6 +217,20 @@ export default function SettingsScreen() {
             </Text>
             <View style={[styles.toggleDot, shakeSosEnabled && styles.toggleDotActive]} />
           </TouchableOpacity>
+        </View>
+
+        <Text style={styles.sectionLabel}>STARTER CONTENT</Text>
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Sparkles color={Colors.oliveLight} size={16} />
+            <Text style={styles.cardTitle}>Sample Data Notice</Text>
+          </View>
+          <Text style={styles.hint}>
+            Your kit starts with sample members, supplies, POIs, and routes so you can explore
+            before entering real data. Sample supplies are marked SAMPLE and include intentionally
+            expired items that demonstrate the expiry alert system — they are not your inventory.
+            Edit or delete each record and add your own.
+          </Text>
         </View>
 
         <Text style={styles.sectionLabel}>ABOUT</Text>

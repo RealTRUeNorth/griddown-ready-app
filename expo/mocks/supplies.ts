@@ -13,6 +13,7 @@ export const seedSupplies: SupplyItem[] = [
     unit: 'gal',
     minimumQuantity: 24,
     notes: 'Garage rack — 6-pack cases',
+    isSample: true,
   },
   {
     id: 's_water_2',
@@ -22,6 +23,7 @@ export const seedSupplies: SupplyItem[] = [
     unit: 'units',
     minimumQuantity: 1,
     notes: 'Backflush kit taped to each filter',
+    isSample: true,
   },
   {
     id: 's_food_1',
@@ -32,6 +34,7 @@ export const seedSupplies: SupplyItem[] = [
     minimumQuantity: 2,
     expirationDate: '2026-09-15',
     notes: 'Hall closet, top shelf',
+    isSample: true,
   },
   {
     id: 's_food_2',
@@ -42,6 +45,7 @@ export const seedSupplies: SupplyItem[] = [
     minimumQuantity: 10,
     expirationDate: '2028-01',
     notes: 'Food-grade buckets with gamma lids',
+    isSample: true,
   },
   {
     id: 's_food_3',
@@ -52,6 +56,7 @@ export const seedSupplies: SupplyItem[] = [
     minimumQuantity: 10,
     expirationDate: '2028-05',
     notes: 'Buckets with oxygen absorbers',
+    isSample: true,
   },
   {
     id: 's_food_4',
@@ -62,6 +67,7 @@ export const seedSupplies: SupplyItem[] = [
     minimumQuantity: 12,
     expirationDate: '2027-06',
     notes: 'Pantry shelf — rotate FIFO',
+    isSample: true,
   },
   {
     id: 's_food_5',
@@ -72,6 +78,7 @@ export const seedSupplies: SupplyItem[] = [
     minimumQuantity: 6,
     expirationDate: '2027-11',
     notes: 'Mylar bags inside 5-gal bucket',
+    isSample: true,
   },
   {
     id: 's_med_1',
@@ -82,6 +89,7 @@ export const seedSupplies: SupplyItem[] = [
     minimumQuantity: 2,
     expirationDate: '2026-03-01',
     notes: 'Med kit — expired, replace',
+    isSample: true,
   },
   {
     id: 's_med_2',
@@ -91,6 +99,7 @@ export const seedSupplies: SupplyItem[] = [
     unit: 'kits',
     minimumQuantity: 1,
     notes: 'Trauma kit incl. tourniquets',
+    isSample: true,
   },
   {
     id: 's_med_3',
@@ -101,6 +110,7 @@ export const seedSupplies: SupplyItem[] = [
     minimumQuantity: 2,
     expirationDate: '2026-10-15',
     notes: 'Oral rehydration — check dose per liter',
+    isSample: true,
   },
   {
     id: 's_tools_1',
@@ -110,6 +120,7 @@ export const seedSupplies: SupplyItem[] = [
     unit: 'count',
     minimumQuantity: 24,
     notes: 'Rotate — flashlight stock',
+    isSample: true,
   },
   {
     id: 's_tools_2',
@@ -119,6 +130,7 @@ export const seedSupplies: SupplyItem[] = [
     unit: 'rolls',
     minimumQuantity: 2,
     notes: 'Garage pegboard',
+    isSample: true,
   },
   {
     id: 's_comms_1',
@@ -128,6 +140,7 @@ export const seedSupplies: SupplyItem[] = [
     unit: 'units',
     minimumQuantity: 4,
     notes: 'Charged monthly — see Comms tab channels',
+    isSample: true,
   },
   {
     id: 's_shelter_1',
@@ -137,5 +150,6 @@ export const seedSupplies: SupplyItem[] = [
     unit: 'units',
     minimumQuantity: 2,
     notes: 'With grommets + bungee assortment',
+    isSample: true,
   },
 ];

@@ -168,9 +168,21 @@ struct SuppliesView: View {
                     .background(Theme.bgElevated)
                     .clipShape(.rect(cornerRadius: 8))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(item.name)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Theme.textPrimary)
+                    HStack(spacing: 6) {
+                        Text(item.name)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Theme.textPrimary)
+                        if item.isSample == true {
+                            Text("SAMPLE")
+                                .font(.system(size: 8, weight: .heavy))
+                                .tracking(1)
+                                .foregroundStyle(Theme.textMuted)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Theme.bgElevated)
+                                .clipShape(.rect(cornerRadius: 4))
+                        }
+                    }
                     Text("\(item.quantity) \(item.unit)\(item.expirationDate.map { " · Exp: \($0)" } ?? "")")
                         .font(.system(size: 11))
                         .foregroundStyle(Theme.textSecondary)

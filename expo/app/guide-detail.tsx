@@ -8,9 +8,22 @@ import {
   Animated,
 } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
-import { ChevronDown, ChevronUp, BookOpen } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, BookOpen, ShieldAlert } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { defaultGuides } from '@/mocks/guides';
+
+/**
+ * Public-source attribution per guide category, shown alongside the
+ * educational-only disclaimer on every guide.
+ */
+const GUIDE_SOURCES: Record<string, string> = {
+  Medical:
+    'Based on widely published American Red Cross / American Heart Association first-aid & CPR and WHO/CDC oral-rehydration guidance.',
+  Survival:
+    'Based on widely published FEMA/Ready.gov and CDC emergency-preparedness and water-treatment guidance.',
+  Supplies: 'Based on widely published FEMA/Ready.gov emergency-preparedness guidance.',
+  Comms: 'Based on widely published ARRL and FEMA emergency-communications guidance.',
+};
 
 export default function GuideDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -44,6 +57,15 @@ export default function GuideDetailScreen() {
             index={index}
           />
         ))}
+
+        <View style={styles.disclaimer}>
+          <ShieldAlert color={Colors.statusAmber} size={14} />
+          <Text style={styles.disclaimerText}>
+            {(GUIDE_SOURCES[guide.category] ??
+              'Based on widely published FEMA/Ready.gov emergency-preparedness guidance.') +
+              ' Educational reference only — always defer to trained medical professionals and local authorities in a real emergency.'}
+          </Text>
+        </View>
 
         <View style={styles.footer}>
           <BookOpen color={Colors.textMuted} size={14} />
@@ -178,6 +200,23 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: 14,
     lineHeight: 22,
+  },
+  disclaimer: {
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 6,
+  },
+  disclaimerText: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    lineHeight: 16,
+    flex: 1,
   },
   footer: {
     flexDirection: 'row',

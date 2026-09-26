@@ -89,7 +89,7 @@ export const defaultGuides: Guide[] = [
       },
       {
         title: 'Emergency Shelters',
-        content: 'Tarp shelter: ridgeline between two trees, tarp draped over at 45 degrees. Debris hut: ridgepole on ground support, pile leaves/branches 2-3 feet thick. Vehicle: crack windows slightly, run engine 10 min/hour for heat.',
+        content: 'Tarp shelter: ridgeline between two trees, tarp draped over at 45 degrees. Debris hut: ridgepole on ground support, pile leaves/branches 2-3 feet thick. Vehicle: park outdoors away from drifts, clear snow from the exhaust pipe before starting, crack a downwind window, and run the engine only 10 minutes per hour — recheck that the exhaust stays clear each time. Never run the engine in a garage or enclosed space, and never sleep with it running: carbon monoxide is odorless and deadly.',
       },
       {
         title: 'Hypothermia Prevention',

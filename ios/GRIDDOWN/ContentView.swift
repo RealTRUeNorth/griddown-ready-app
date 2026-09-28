@@ -124,6 +124,10 @@ struct ContentView: View {
             }
         case .settings:
             SettingsView()
+        case .helpFaq:
+            HelpFaqView()
+        case .legal:
+            LegalView()
         }
     }
 }
@@ -140,4 +144,6 @@ enum NavRoute: Hashable {
     case memberDetail(String)
     case resourceDetail(String)
     case settings
+    case helpFaq
+    case legal
 }

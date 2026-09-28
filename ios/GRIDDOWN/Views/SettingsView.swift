@@ -193,6 +193,24 @@ struct SettingsView: View {
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
                 .clipShape(.rect(cornerRadius: 12))
 
+                SectionLabel(text: "HELP & LEGAL")
+
+                VStack(spacing: 0) {
+                    NavigationLink(value: NavRoute.helpFaq) {
+                        settingsRow(icon: "questionmark.circle.fill", title: "Help & FAQ")
+                    }
+                    .buttonStyle(.plain)
+                    Divider()
+                        .background(Theme.border)
+                    NavigationLink(value: NavRoute.legal) {
+                        settingsRow(icon: "doc.text.fill", title: "Legal & Compliance")
+                    }
+                    .buttonStyle(.plain)
+                }
+                .background(Theme.bgCard)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+                .clipShape(.rect(cornerRadius: 12))
+
                 SectionLabel(text: "ABOUT")
 
                 VStack(alignment: .leading, spacing: 12) {
@@ -229,5 +247,23 @@ struct SettingsView: View {
         guard isNameDirty else { return }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         store.updateGroupName(nameDraft.trimmingCharacters(in: .whitespaces))
+    }
+
+    private func settingsRow(icon: String, title: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.oliveLight)
+                .frame(width: 20)
+            Text(title)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Theme.textPrimary)
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Theme.textMuted)
+        }
+        .padding(14)
+        .contentShape(Rectangle())
     }
 }

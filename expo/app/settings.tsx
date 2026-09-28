@@ -9,8 +9,8 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import { Stack } from 'expo-router';
-import { Users, Clock, Database, Check, Bell, Vibrate, Send, Sparkles } from 'lucide-react-native';
+import { Stack, router, Href } from 'expo-router';
+import { Users, Clock, Database, Check, Bell, Vibrate, Send, Sparkles, HelpCircle, Scale, ChevronRight } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
@@ -233,6 +233,31 @@ export default function SettingsScreen() {
           </Text>
         </View>
 
+        <Text style={styles.sectionLabel}>HELP & LEGAL</Text>
+        <View style={styles.linkCard}>
+          <TouchableOpacity
+            style={styles.linkRow}
+            activeOpacity={0.7}
+            onPress={() => router.push('/help-faq' as Href)}
+            testID="help-faq-link"
+          >
+            <HelpCircle color={Colors.oliveLight} size={16} />
+            <Text style={styles.linkText}>Help & FAQ</Text>
+            <ChevronRight color={Colors.textMuted} size={16} />
+          </TouchableOpacity>
+          <View style={styles.linkDivider} />
+          <TouchableOpacity
+            style={styles.linkRow}
+            activeOpacity={0.7}
+            onPress={() => router.push('/legal' as Href)}
+            testID="legal-link"
+          >
+            <Scale color={Colors.oliveLight} size={16} />
+            <Text style={styles.linkText}>Legal & Compliance</Text>
+            <ChevronRight color={Colors.textMuted} size={16} />
+          </TouchableOpacity>
+        </View>
+
         <Text style={styles.sectionLabel}>ABOUT</Text>
         <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -289,6 +314,30 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     fontSize: 14,
     fontWeight: '700' as const,
+  },
+  linkCard: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 14,
+  },
+  linkText: {
+    color: Colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '600' as const,
+    flex: 1,
+  },
+  linkDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
   },
   nameInput: {
     backgroundColor: Colors.bg,

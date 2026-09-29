@@ -8,9 +8,10 @@ import {
   Animated,
 } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
-import { ChevronDown, ChevronUp, BookOpen, ShieldAlert } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, BookOpen, ShieldAlert, Volume2, VolumeX } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { defaultGuides } from '@/mocks/guides';
+import { useSpeech } from '@/utils/deviceServices';
 
 /**
  * Public-source attribution per guide category, shown alongside the
@@ -27,6 +28,7 @@ const GUIDE_SOURCES: Record<string, string> = {
 
 export default function GuideDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { isSpeaking, speak, stop } = useSpeech();
   const guide = defaultGuides.find((g) => g.id === id);
 
   if (!guide) {
@@ -48,6 +50,22 @@ export default function GuideDetailScreen() {
           <Text style={styles.title}>{guide.title}</Text>
           <Text style={styles.summary}>{guide.summary}</Text>
         </View>
+
+        <TouchableOpacity
+          style={styles.readAloudBtn}
+          onPress={() => {
+            if (isSpeaking) {
+              stop();
+            } else {
+              speak([guide.summary, ...guide.sections.map((s) => s.content)]);
+            }
+          }}
+          activeOpacity={0.8}
+          testID="read-aloud-btn"
+        >
+          {isSpeaking ? <VolumeX color={Colors.white} size={15} /> : <Volume2 color={Colors.white} size={15} />}
+          <Text style={styles.readAloudText}>{isSpeaking ? 'Stop Reading' : 'Read Aloud'}</Text>
+        </TouchableOpacity>
 
         {guide.sections.map((section, index) => (
           <SectionCard
@@ -157,6 +175,22 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: 14,
     lineHeight: 20,
+  },
+  readAloudBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.olive,
+    borderRadius: 10,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  readAloudText: {
+    color: Colors.white,
+    fontSize: 13,
+    fontWeight: '700' as const,
+    letterSpacing: 1,
   },
   sectionCard: {
     backgroundColor: Colors.bgCard,

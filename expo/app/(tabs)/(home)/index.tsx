@@ -20,6 +20,11 @@ import {
   Radio,
   Zap,
   Clock,
+  Flashlight,
+  BatteryMedium,
+  Wifi,
+  WifiOff,
+  Footprints,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -27,6 +32,7 @@ import { useAppData } from '@/providers/AppProvider';
 import { defaultGuides } from '@/mocks/guides';
 import { AlertLevel, SupplyItem } from '@/types';
 import { getInventoryAlerts } from '@/utils/supplyAlerts';
+import { useBattery, useOnlineStatus, usePedometer } from '@/utils/deviceServices';
 import {
   getCheckInState,
   checkInStatusLabel,
@@ -72,6 +78,21 @@ export default function DashboardScreen() {
 
   const currentAlert = alertConfig[alertLevel];
   const readyMembers = members.filter((m) => m.status === 'ready').length;
+
+  const battery = useBattery();
+  const isOnline = useOnlineStatus();
+  const pedometer = usePedometer();
+
+  const batteryText = battery.levelPercent >= 0 ? `${battery.levelPercent}%` : '--';
+  const batteryColor =
+    battery.levelPercent < 0
+      ? Colors.textSecondary
+      : battery.levelPercent <= 20
+      ? Colors.statusRed
+      : battery.levelPercent <= 40
+      ? Colors.statusAmber
+      : Colors.statusGreen;
+  const pedometerText = pedometer.available ? `${pedometer.steps} steps` : 'N/A';
 
   const inventoryAlertRows = useMemo(() => {
     const summary = getInventoryAlerts(supplies);
@@ -192,6 +213,49 @@ export default function DashboardScreen() {
           sublabel="Available"
           onPress={() => router.push('/(tabs)/intel/guides' as Href)}
         />
+      </View>
+
+      <Text style={styles.sectionTitle}>DEVICE STATUS</Text>
+      <View style={styles.devicePanel}>
+        <TouchableOpacity
+          style={styles.deviceRow}
+          onPress={() => router.push('/lantern' as Href)}
+          activeOpacity={0.7}
+          testID="device-lantern"
+        >
+          <Flashlight color={Colors.amberLight} size={16} />
+          <Text style={styles.deviceLabel}>Lantern</Text>
+          <Text style={styles.deviceValue}>Torch · SOS</Text>
+        </TouchableOpacity>
+        <View style={[styles.deviceRow, styles.deviceRowDivider]}>
+          <BatteryMedium color={batteryColor} size={16} />
+          <Text style={styles.deviceLabel}>Battery</Text>
+          <Text style={[styles.deviceValue, { color: batteryColor }]}>
+            {batteryText}
+            {battery.isCharging ? ' · charging' : ''}
+          </Text>
+        </View>
+        <View style={[styles.deviceRow, styles.deviceRowDivider]}>
+          {isOnline ? (
+            <Wifi color={Colors.statusGreen} size={16} />
+          ) : (
+            <WifiOff color={Colors.statusRed} size={16} />
+          )}
+          <Text style={styles.deviceLabel}>Network</Text>
+          <Text
+            style={[
+              styles.deviceValue,
+              { color: isOnline ? Colors.statusGreen : Colors.statusRed },
+            ]}
+          >
+            {isOnline ? 'ONLINE' : 'OFFLINE'}
+          </Text>
+        </View>
+        <View style={[styles.deviceRow, styles.deviceRowDivider]}>
+          <Footprints color={Colors.oliveLight} size={16} />
+          <Text style={styles.deviceLabel}>Movement Today</Text>
+          <Text style={styles.deviceValue}>{pedometerText}</Text>
+        </View>
       </View>
 
       {inventoryAlertRows.length > 0 && (
@@ -553,6 +617,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600' as const,
     textAlign: 'center',
+  },
+  devicePanel: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 12,
+  },
+  deviceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+  },
+  deviceRowDivider: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  deviceLabel: {
+    color: Colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '600' as const,
+    flex: 1,
+  },
+  deviceValue: {
+    color: Colors.textPrimary,
+    fontSize: 12,
+    fontWeight: '700' as const,
   },
   checkInPanel: {
     backgroundColor: Colors.bgCard,

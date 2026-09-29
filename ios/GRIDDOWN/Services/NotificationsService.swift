@@ -7,6 +7,8 @@ import UserNotifications
 enum NotificationsService {
     static let checkInIdentifier = "griddown.checkin.reminder"
     static let supplyPrefix = "griddown.supply."
+    /// Distinctive two-tone alarm for urgent alerts (storm warning, test).
+    static let alarmSound = UNNotificationSound(named: UNNotificationSoundName("alarm.wav"))
 
     /// Prompts for notification permission. False if denied or errored.
     static func requestAuthorization() async -> Bool {
@@ -55,7 +57,7 @@ enum NotificationsService {
             format: "Barometric pressure is dropping %.1f hPa/hr — deteriorating weather possible. Secure gear and check shelter.",
             abs(ratePerHour)
         )
-        content.sound = .default
+        content.sound = alarmSound
         let request = UNNotificationRequest(
             identifier: "griddown.storm.\(UUID().uuidString)", content: content, trigger: nil
         )
@@ -67,7 +69,7 @@ enum NotificationsService {
         let content = UNMutableNotificationContent()
         content.title = "GRIDDOWN Reminders Active"
         content.body = "Check-in reminders and supply expiry alerts will appear here."
-        content.sound = .default
+        content.sound = alarmSound
         let request = UNNotificationRequest(
             identifier: "griddown.test.\(UUID().uuidString)", content: content, trigger: nil
         )

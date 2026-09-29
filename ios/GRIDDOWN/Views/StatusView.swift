@@ -3,6 +3,9 @@ import SwiftUI
 struct StatusView: View {
     @Environment(AppStore.self) var store
     @State private var editingSupply: SupplyItem?
+    @State private var battery = BatteryService()
+    @State private var network = NetworkMonitor()
+    @State private var pedometer = PedometerService()
 
     var body: some View {
         ScrollView {
@@ -10,6 +13,7 @@ struct StatusView: View {
                 alertBanner
                 statsRow1
                 statsRow2
+                deviceSection
                 checkInSection
                 inventoryAlertsSection
                 quickAccessSection
@@ -32,6 +36,15 @@ struct StatusView: View {
         }
         .sheet(item: $editingSupply) { item in
             AddSupplyView(existing: item)
+        }
+        .task {
+            battery.start()
+            network.start()
+            pedometer.start()
+        }
+        .onDisappear {
+            battery.stop()
+            pedometer.stop()
         }
     }
 
@@ -115,6 +128,84 @@ struct StatusView: View {
         summary.low.forEach { push($0, "LOW STOCK", Theme.statusRed) }
         summary.expiringSoon.forEach { push($0, "EXPIRES SOON", Theme.statusAmber) }
         return order.compactMap { map[$0] }
+    }
+
+    @ViewBuilder
+    private var deviceSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionLabel(text: "DEVICE STATUS")
+            VStack(spacing: 0) {
+                NavigationLink(value: NavRoute.lantern) {
+                    deviceRow(
+                        icon: "flashlight.on.fill", iconColor: Theme.amberLight,
+                        label: "Lantern", value: "Torch · SOS", detail: "Tap to open",
+                        valueColor: Theme.textPrimary
+                    )
+                }
+                .buttonStyle(.plain)
+                Divider().overlay(Theme.border)
+                deviceRow(
+                    icon: "battery.100percent", iconColor: batteryColor,
+                    label: "Battery", value: batteryText,
+                    detail: battery.isCharging ? "Charging" : "On battery",
+                    valueColor: batteryColor
+                )
+                Divider().overlay(Theme.border)
+                deviceRow(
+                    icon: network.isOnline ? "wifi" : "wifi.slash",
+                    iconColor: network.isOnline ? Theme.statusGreen : Theme.statusRed,
+                    label: "Network", value: network.isOnline ? "ONLINE" : "OFFLINE",
+                    detail: network.isOnline ? "Connected" : "Everything still works offline",
+                    valueColor: network.isOnline ? Theme.statusGreen : Theme.statusRed
+                )
+                Divider().overlay(Theme.border)
+                deviceRow(
+                    icon: "figure.walk", iconColor: Theme.oliveLight,
+                    label: "Movement Today", value: pedometer.isAvailable ? "\(pedometer.steps) steps" : "N/A",
+                    detail: pedometer.isAvailable ? pedometer.distanceLabel : "No pedometer on this device",
+                    valueColor: Theme.textPrimary
+                )
+            }
+            .background(Theme.bgCard)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+            .clipShape(.rect(cornerRadius: 12))
+            .padding(.bottom, 16)
+        }
+    }
+
+    private var batteryText: String {
+        battery.level >= 0 ? "\(battery.level)%" : "--"
+    }
+
+    private var batteryColor: Color {
+        guard battery.level >= 0 else { return Theme.textSecondary }
+        if battery.level <= 20 { return Theme.statusRed }
+        if battery.level <= 40 { return Theme.statusAmber }
+        return Theme.statusGreen
+    }
+
+    private func deviceRow(icon: String, iconColor: Color, label: String, value: String, detail: String, valueColor: Color) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 15))
+                .foregroundStyle(iconColor)
+                .frame(width: 24)
+            Text(label)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Theme.textPrimary)
+            Spacer()
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(value)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(valueColor)
+                Text(detail)
+                    .font(.system(size: 10))
+                    .foregroundStyle(Theme.textMuted)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
     }
 
     @ViewBuilder

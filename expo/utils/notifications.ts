@@ -160,7 +160,7 @@ export async function sendStormWarningNotification(ratePerHour: number): Promise
       content: {
         title: 'Pressure Falling Fast',
         body: `Barometric pressure is dropping ${Math.abs(ratePerHour).toFixed(1)} hPa/hr — deteriorating weather possible. Secure gear and check shelter.`,
-        sound: false,
+        sound: Platform.OS === 'ios' ? 'alarm.wav' : false,
       },
     });
   } catch (e) {
@@ -177,7 +177,7 @@ export async function sendTestNotification(): Promise<void> {
       content: {
         title: 'GRIDDOWN Reminders Active',
         body: 'Check-in reminders and supply expiry alerts will appear here.',
-        sound: false,
+        sound: Platform.OS === 'ios' ? 'alarm.wav' : false,
       },
     });
   } catch (e) {

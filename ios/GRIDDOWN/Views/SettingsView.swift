@@ -3,6 +3,8 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(AppStore.self) var store
     @State private var nameDraft: String = ""
+    @State private var lock = BiometricLockService.shared
+    @State private var showLockError = false
 
     private var isNameDirty: Bool {
         let trimmed = nameDraft.trimmingCharacters(in: .whitespaces)
@@ -173,6 +175,48 @@ struct SettingsView: View {
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
                 .clipShape(.rect(cornerRadius: 12))
 
+                SectionLabel(text: "SECURITY")
+
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "faceid")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Theme.oliveLight)
+                        Text("App Lock")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    Text("Require \(lock.biometryLabel) (with passcode fallback) to open GRIDDOWN. Protects your roster's addresses and notes if the phone is lost. This setting stays on this device and is never included in ops backups.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.textMuted)
+                    Toggle(isOn: Binding(
+                        get: { lock.isEnabled },
+                        set: { enabled in
+                            if enabled {
+                                Task {
+                                    if await lock.authenticate() {
+                                        lock.isEnabled = true
+                                        UINotificationFeedbackGenerator().notificationOccurred(.success)
+                                    } else {
+                                        showLockError = true
+                                    }
+                                }
+                            } else {
+                                lock.isEnabled = false
+                            }
+                        }
+                    )) {
+                        Text(lock.isEnabled ? "App Lock On" : "App Lock Off")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    .tint(Theme.statusGreen)
+                }
+                .padding(16)
+                .background(Theme.bgCard)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+                .clipShape(.rect(cornerRadius: 12))
+
                 SectionLabel(text: "STARTER CONTENT")
 
                 VStack(alignment: .leading, spacing: 10) {
@@ -189,6 +233,18 @@ struct SettingsView: View {
                         .foregroundStyle(Theme.textMuted)
                 }
                 .padding(16)
+                .background(Theme.bgCard)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+                .clipShape(.rect(cornerRadius: 12))
+
+                SectionLabel(text: "TOOLS")
+
+                VStack(spacing: 0) {
+                    NavigationLink(value: NavRoute.lantern) {
+                        settingsRow(icon: "flashlight.on.fill", title: "Lantern")
+                    }
+                    .buttonStyle(.plain)
+                }
                 .background(Theme.bgCard)
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
                 .clipShape(.rect(cornerRadius: 12))
@@ -241,6 +297,11 @@ struct SettingsView: View {
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { nameDraft = store.groupName }
+        .alert("Couldn't Enable App Lock", isPresented: $showLockError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Authentication failed or no device passcode is set. Set a passcode and try again.")
+        }
     }
 
     private func saveName() {

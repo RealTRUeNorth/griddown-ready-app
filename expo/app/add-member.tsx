@@ -9,13 +9,21 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { router, useLocalSearchParams, Stack } from 'expo-router';
-import { UserPlus, Pencil } from 'lucide-react-native';
+import { UserPlus, Pencil, Contact, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
 import { GroupMember } from '@/types';
+import {
+  fetchContacts,
+  isContactsSupported,
+  type ContactEntry,
+} from '@/utils/deviceServices';
 
 const statusOptions: GroupMember['status'][] = ['ready', 'unavailable', 'unknown'];
 const statusLabels: Record<string, string> = {
@@ -41,6 +49,28 @@ export default function AddMemberScreen() {
   const [skillsText, setSkillsText] = useState(existing?.skills.join(', ') ?? '');
   const [phone, setPhone] = useState(existing?.phone ?? '');
   const [notes, setNotes] = useState(existing?.notes ?? '');
+  const [showContacts, setShowContacts] = useState(false);
+  const [contacts, setContacts] = useState<ContactEntry[]>([]);
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [contactError, setContactError] = useState<string | null>(null);
+
+  const handleOpenContacts = useCallback(async () => {
+    if (!isContactsSupported()) {
+      Alert.alert('Not Available', 'Contact import works on the mobile apps.');
+      return;
+    }
+    setShowContacts(true);
+    setLoadingContacts(true);
+    setContactError(null);
+    const list = await fetchContacts();
+    setLoadingContacts(false);
+    if (list.length === 0) {
+      setContactError(
+        'No contacts found. Check that GRIDDOWN has contacts permission in system settings.'
+      );
+    }
+    setContacts(list);
+  }, []);
 
   const handleSave = useCallback(() => {
     if (!name.trim()) {
@@ -89,6 +119,15 @@ export default function AddMemberScreen() {
             )}
           </View>
           <Text style={styles.headerTitle}>{isEditing ? 'Edit Group Member' : 'Add Group Member'}</Text>
+          <TouchableOpacity
+            style={styles.contactsBtn}
+            onPress={() => void handleOpenContacts()}
+            activeOpacity={0.7}
+            testID="import-contacts-btn"
+          >
+            <Contact color={Colors.oliveLight} size={15} />
+            <Text style={styles.contactsBtnText}>Import from Contacts</Text>
+          </TouchableOpacity>
         </View>
 
         <Text style={styles.label}>NAME *</Text>
@@ -179,6 +218,48 @@ export default function AddMemberScreen() {
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
+
+    <Modal
+      visible={showContacts}
+      animationType="slide"
+      onRequestClose={() => setShowContacts(false)}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Choose a Contact</Text>
+          <TouchableOpacity
+            onPress={() => setShowContacts(false)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            testID="close-contacts-btn"
+          >
+            <X color={Colors.textMuted} size={20} />
+          </TouchableOpacity>
+        </View>
+        {loadingContacts ? (
+          <ActivityIndicator style={styles.modalLoader} color={Colors.orange} />
+        ) : contactError ? (
+          <Text style={styles.modalError}>{contactError}</Text>
+        ) : (
+          <FlatList
+            data={contacts}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.contactRow}
+                onPress={() => {
+                  setName(item.name);
+                  if (item.phone) setPhone(item.phone);
+                  setShowContacts(false);
+                }}
+              >
+                <Text style={styles.contactName}>{item.name}</Text>
+                {item.phone ? <Text style={styles.contactPhone}>{item.phone}</Text> : null}
+              </TouchableOpacity>
+            )}
+          />
+        )}
+      </View>
+    </Modal>
     </>
   );
 }
@@ -213,6 +294,72 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     fontSize: 18,
     fontWeight: '700' as const,
+  },
+  contactsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.bgElevated,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginTop: 2,
+  },
+  contactsBtnText: {
+    color: Colors.oliveLight,
+    fontSize: 12,
+    fontWeight: '700' as const,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: Colors.bg,
+    paddingTop: 60,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  modalTitle: {
+    color: Colors.textPrimary,
+    fontSize: 17,
+    fontWeight: '700' as const,
+  },
+  modalLoader: {
+    marginTop: 40,
+  },
+  modalError: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 40,
+    paddingHorizontal: 24,
+    lineHeight: 20,
+  },
+  contactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  contactName: {
+    color: Colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '600' as const,
+    flex: 1,
+  },
+  contactPhone: {
+    color: Colors.textSecondary,
+    fontSize: 13,
   },
   label: {
     color: Colors.textMuted,

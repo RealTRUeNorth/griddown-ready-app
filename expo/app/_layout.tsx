@@ -11,6 +11,7 @@ import Colors from "@/constants/colors";
 import { useShakeSos } from "@/utils/shakeSos";
 import { useBarometer } from "@/utils/barometer";
 import { sendStormWarningNotification } from "@/utils/notifications";
+import { LockGate } from "@/components/LockGate";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -58,6 +59,12 @@ function SensorEffects() {
   }, [remindersEnabled, barometer.stormRisk, barometer.ratePerHour]);
 
   return null;
+}
+
+/** Renders the biometric lock overlay when App Lock is enabled. */
+function GateController() {
+  const { biometricLockEnabled } = useAppData();
+  return <LockGate enabled={!!biometricLockEnabled && Platform.OS !== "web"} />;
 }
 
 function RootLayoutNav() {
@@ -116,6 +123,10 @@ function RootLayoutNav() {
         name="settings"
         options={{ title: "Settings" }}
       />
+      <Stack.Screen
+        name="lantern"
+        options={{ title: "Lantern" }}
+      />
     </Stack>
   );
 }
@@ -132,6 +143,7 @@ export default function RootLayout() {
           <DownloadProvider>
             <MapPacksProvider>
               <SensorEffects />
+              <GateController />
               <RootLayoutNav />
             </MapPacksProvider>
           </DownloadProvider>

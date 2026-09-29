@@ -43,6 +43,7 @@ import { Coordinates, POI, Route, WeatherData } from '@/types';
 import WeatherSuggestionsBanner from '@/components/WeatherSuggestionsBanner';
 import { saveWeatherCache, loadWeatherCache, formatCachedAt } from '@/utils/weatherCache';
 import { openDirectionsTo } from '@/utils/navigation';
+import { useHeading, cardinalFor, bearingBetween } from '@/utils/deviceServices';
 import { CloudOff } from 'lucide-react-native';
 import OfflineTileMap from '@/components/OfflineTileMap';
 import { useMapPacks } from '@/providers/MapPacksProvider';
@@ -124,6 +125,7 @@ export default function MapScreen() {
   );
   const [offlineMode, setOfflineMode] = useState<boolean>(false);
   const [currentRegion, setCurrentRegion] = useState<MapRegion | null>(null);
+  const compass = useHeading();
 
   // Fetch weather for resource suggestions (falls back to cached data offline)
   const weatherQuery = useQuery({
@@ -325,6 +327,12 @@ export default function MapScreen() {
   }, [pois, searchQuery]);
 
   const isSearching = searchQuery.trim().length > 0;
+
+  // Initial bearing from the user to the selected POI, shown on the compass
+  const bearingToSelected = useMemo(
+    () => (userLocation && selectedPoi ? bearingBetween(userLocation, selectedPoi.coordinates) : null),
+    [userLocation, selectedPoi]
+  );
 
   // When searching, only show matching POIs on the map
   const visibleCustomPois = useMemo(
@@ -726,6 +734,34 @@ export default function MapScreen() {
               <Text style={styles.badgeText}>{routes.length}</Text>
             </View>
           </View>
+        </View>
+      </View>
+
+      {/* Compass */}
+      <View style={styles.compassChip}>
+        <Navigation
+          color={Colors.orange}
+          size={14}
+          style={
+            compass.heading != null
+              ? // Icon base points NE (45°); rotate so it shows where north is
+                { transform: [{ rotate: `${-45 - compass.heading}deg` }] }
+              : undefined
+          }
+        />
+        <View style={styles.compassInfo}>
+          <Text style={styles.compassValue}>
+            {compass.heading != null
+              ? `${Math.round(compass.heading)}° ${cardinalFor(compass.heading)}`
+              : 'NO COMPASS'}
+          </Text>
+          <Text style={styles.compassLabel}>
+            {compass.heading != null
+              ? bearingToSelected != null
+                ? `POI BEARING ${Math.round(bearingToSelected)}°`
+                : 'HEADING'
+              : 'SENSOR UNAVAILABLE'}
+          </Text>
         </View>
       </View>
 
@@ -1176,6 +1212,35 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 12,
     fontWeight: '700' as const,
+  },
+  compassChip: {
+    position: 'absolute',
+    top: 76,
+    left: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(26, 29, 26, 0.92)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  compassInfo: {
+    gap: 1,
+  },
+  compassValue: {
+    color: Colors.textPrimary,
+    fontSize: 12,
+    fontWeight: '700' as const,
+    fontVariant: ['tabular-nums'] as any,
+  },
+  compassLabel: {
+    color: Colors.textMuted,
+    fontSize: 8,
+    fontWeight: '700' as const,
+    letterSpacing: 1,
   },
   searchContainer: {
     position: 'absolute',

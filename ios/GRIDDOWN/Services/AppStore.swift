@@ -1,5 +1,6 @@
 import SwiftUI
 import Observation
+import WidgetKit
 
 @Observable
 final class AppStore {
@@ -25,6 +26,7 @@ final class AppStore {
     init() {
         loadData()
         seedLocalPoisIfNeeded()
+        writeWidgetSnapshot()
         if remindersEnabled {
             // Re-register pending requests on launch — idempotent reschedule
             NotificationsService.scheduleCheckInReminder(intervalHours: checkInIntervalHours)
@@ -114,6 +116,28 @@ final class AppStore {
         if let encoded = try? JSONEncoder().encode(data) {
             UserDefaults.standard.set(encoded, forKey: storageKey)
         }
+        writeWidgetSnapshot()
+    }
+
+    // MARK: - Widget
+
+    /// Publishes a compact snapshot to the shared App Group container for the
+    /// home-screen widget and asks WidgetKit to refresh its timelines.
+    func writeWidgetSnapshot() {
+        guard let defaults = UserDefaults(suiteName: "group.app.rork.m1n8sfy2h3980p3hrfm5j") else { return }
+        let ready = members.filter { $0.status == .ready }.count
+        let overdue = members.filter { member in
+            let state = CheckIn.state(for: member, intervalHours: checkInIntervalHours)
+            return state == .overdue || state == .never
+        }.count
+        let low = supplies.filter { $0.quantity <= $0.minimumQuantity }.count
+        defaults.set(alertLevel.rawValue, forKey: "widget_alert_level")
+        defaults.set(groupName, forKey: "widget_group_name")
+        defaults.set(ready, forKey: "widget_ready_count")
+        defaults.set(members.count, forKey: "widget_member_count")
+        defaults.set(overdue, forKey: "widget_overdue_count")
+        defaults.set(low, forKey: "widget_low_count")
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     var supplyStats: (total: Int, low: Int, categories: Int) {

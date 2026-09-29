@@ -6,8 +6,11 @@ struct ContentView: View {
     @State private var tileManager = TileDownloadManager()
     @State private var motionService = MotionService()
     @State private var showingShakeSos = false
+    @State private var lock = BiometricLockService.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
+        ZStack {
         TabView {
             NavigationStack {
                 StatusView()
@@ -64,11 +67,35 @@ struct ContentView: View {
                 Text("Intel")
             }
         }
+
+            if lock.isLocked {
+                LockGateView(service: lock)
+                    .transition(.opacity)
+                    .zIndex(10)
+            }
+        }
         .tint(Theme.orange)
         .environment(appStore)
         .environment(downloadManager)
         .environment(tileManager)
         .preferredColorScheme(.dark)
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .active:
+                if let level = lock.consumeIntentAlertLevel() {
+                    appStore.updateAlertLevel(level)
+                }
+            case .background:
+                lock.lockIfNeeded()
+            default:
+                break
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .griddownIntentAlert)) { _ in
+            if let level = lock.consumeIntentAlertLevel() {
+                appStore.updateAlertLevel(level)
+            }
+        }
         .confirmationDialog(
             "Shake Detected",
             isPresented: $showingShakeSos,
@@ -124,6 +151,8 @@ struct ContentView: View {
             }
         case .settings:
             SettingsView()
+        case .lantern:
+            LanternView()
         case .helpFaq:
             HelpFaqView()
         case .legal:
@@ -144,6 +173,7 @@ enum NavRoute: Hashable {
     case memberDetail(String)
     case resourceDetail(String)
     case settings
+    case lantern
     case helpFaq
     case legal
 }

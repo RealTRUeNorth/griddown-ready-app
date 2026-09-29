@@ -82,7 +82,7 @@ struct ChecklistDetailView: View {
 
 struct GuideDetailView: View {
     let guide: Guide
-
+    @State private var speech = SpeechService()
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -141,6 +141,22 @@ struct GuideDetailView: View {
         .background(Theme.bg.ignoresSafeArea())
         .navigationTitle(guide.title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    if speech.isSpeaking {
+                        speech.stop()
+                    } else {
+                        speech.speakParagraphs([guide.summary] + guide.sections.map { $0.content })
+                    }
+                } label: {
+                    Image(systemName: speech.isSpeaking ? "speaker.wave.2.slash" : "speaker.wave.2")
+                        .foregroundStyle(speech.isSpeaking ? Theme.orange : Theme.textSecondary)
+                }
+            }
+        }
+        .onDisappear { speech.stop() }
     }
 
     private var guideDisclaimer: some View {

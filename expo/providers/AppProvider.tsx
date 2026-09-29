@@ -95,6 +95,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
   const [checkInIntervalHours, setCheckInIntervalHours] = useState<number>(DEFAULT_CHECK_IN_HOURS);
   const [remindersEnabled, setRemindersEnabled] = useState<boolean>(false);
   const [shakeSosEnabled, setShakeSosEnabled] = useState<boolean>(true);
+  const [biometricLockEnabled, setBiometricLockEnabled] = useState<boolean>(false);
   const [members, setMembers] = useState<GroupMember[]>(defaultMembers);
   const [supplies, setSupplies] = useState<SupplyItem[]>(seedSupplies);
   const [checklists, setChecklists] = useState<Checklist[]>(defaultChecklists);
@@ -167,6 +168,7 @@ export const [AppProvider, useAppData] = createContextHook(() => {
       setCheckInIntervalHours(dataQuery.data.checkInIntervalHours ?? DEFAULT_CHECK_IN_HOURS);
       setRemindersEnabled(dataQuery.data.remindersEnabled ?? false);
       setShakeSosEnabled(dataQuery.data.shakeSosEnabled ?? true);
+      setBiometricLockEnabled(dataQuery.data.biometricLockEnabled ?? false);
       setMembers(dataQuery.data.members);
       setSupplies(dataQuery.data.supplies);
       setChecklists(dataQuery.data.checklists);
@@ -245,6 +247,15 @@ export const [AppProvider, useAppData] = createContextHook(() => {
     (enabled: boolean) => {
       setShakeSosEnabled(enabled);
       persistData({ shakeSosEnabled: enabled });
+    },
+    [persistData]
+  );
+
+  // Device-local privacy preference; never included in ops backups.
+  const updateBiometricLock = useCallback(
+    (enabled: boolean) => {
+      setBiometricLockEnabled(enabled);
+      persistData({ biometricLockEnabled: enabled });
     },
     [persistData]
   );
@@ -662,6 +673,8 @@ export const [AppProvider, useAppData] = createContextHook(() => {
     updateCheckInInterval,
     updateRemindersEnabled,
     updateShakeSos,
+    biometricLockEnabled,
+    updateBiometricLock,
     checkInMember,
     addMember,
     updateMember,

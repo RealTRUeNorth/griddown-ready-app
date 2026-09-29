@@ -111,6 +111,7 @@ struct AddMemberView: View {
     @State private var skillsText: String
     @State private var phone: String
     @State private var notes: String
+    @State private var showingContactPicker = false
     @FocusState private var focused: Bool
 
     init(existing: GroupMember? = nil) {
@@ -135,6 +136,24 @@ struct AddMemberView: View {
                                iconBg: Theme.orangeMuted,
                                title: isEditing ? "Edit Group Member" : "Add Group Member",
                                subtitle: isEditing ? "Update this member's details" : "Register a new member in your roster")
+
+                    Button {
+                        showingContactPicker = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "person.crop.square.filled.and.at.rectangle")
+                                .font(.system(size: 13, weight: .bold))
+                            Text("Import from Contacts")
+                                .font(.system(size: 13, weight: .bold))
+                        }
+                        .foregroundStyle(Theme.oliveLight)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Theme.bgElevated)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.borderLight, lineWidth: 1))
+                        .clipShape(.rect(cornerRadius: 8))
+                    }
+                    .buttonStyle(.plain)
 
                     FormFieldLabel(text: "NAME *")
                     FormTextField(placeholder: "Member name or callsign", text: $name)
@@ -209,6 +228,12 @@ struct AddMemberView: View {
             }
         }
         .onAppear { focused = true }
+        .sheet(isPresented: $showingContactPicker) {
+            ContactPicker { pickedName, pickedPhone in
+                if !pickedName.isEmpty { name = pickedName }
+                if let pickedPhone, !pickedPhone.isEmpty { phone = pickedPhone }
+            }
+        }
     }
 }
 

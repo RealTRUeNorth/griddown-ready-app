@@ -180,6 +180,8 @@ export interface AppData {
   checkInIntervalHours?: number;
   remindersEnabled?: boolean;
   shakeSosEnabled?: boolean;
+  /** Device-local preference; deliberately excluded from ops backups. */
+  biometricLockEnabled?: boolean;
   members: GroupMember[];
   supplies: SupplyItem[];
   checklists: Checklist[];

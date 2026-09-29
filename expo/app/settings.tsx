@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { Stack, router, Href } from 'expo-router';
-import { Users, Clock, Database, Check, Bell, Vibrate, Send, Sparkles, HelpCircle, Scale, ChevronRight } from 'lucide-react-native';
+import { Users, Clock, Database, Check, Bell, Vibrate, Send, Sparkles, HelpCircle, Scale, ChevronRight, Flashlight, Lock } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
@@ -21,6 +21,7 @@ import {
   isNotificationsSupported,
   sendTestNotification,
 } from '@/utils/notifications';
+import { authenticateUser } from '@/utils/deviceServices';
 
 export default function SettingsScreen() {
   const {
@@ -32,6 +33,8 @@ export default function SettingsScreen() {
     updateRemindersEnabled,
     shakeSosEnabled,
     updateShakeSos,
+    biometricLockEnabled,
+    updateBiometricLock,
     currentSnapshot,
   } = useAppData();
 
@@ -64,6 +67,26 @@ export default function SettingsScreen() {
     }
     updateShakeSos(!shakeSosEnabled);
   }, [shakeSosEnabled, updateShakeSos]);
+
+  const handleToggleAppLock = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS === 'web') {
+      Alert.alert('Not Available', 'App Lock works on the mobile apps.');
+      return;
+    }
+    if (!biometricLockEnabled) {
+      const ok = await authenticateUser('Enable App Lock for GRIDDOWN');
+      if (!ok) {
+        Alert.alert(
+          "Couldn't Enable App Lock",
+          'Authentication failed or no device passcode is set. Set a passcode and try again.'
+        );
+        return;
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    updateBiometricLock(!biometricLockEnabled);
+  }, [biometricLockEnabled, updateBiometricLock]);
 
   const handleTestNotification = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -219,6 +242,30 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
+        <Text style={styles.sectionLabel}>SECURITY</Text>
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Lock color={Colors.oliveLight} size={16} />
+            <Text style={styles.cardTitle}>App Lock</Text>
+          </View>
+          <Text style={styles.hint}>
+            Require biometrics (with device-passcode fallback) to open GRIDDOWN. Protects your
+            roster's addresses and notes if the phone is lost. This setting stays on this device
+            and is never included in ops backups.
+          </Text>
+          <TouchableOpacity
+            style={styles.toggleRow}
+            onPress={() => void handleToggleAppLock()}
+            activeOpacity={0.7}
+            testID="app-lock-toggle"
+          >
+            <Text style={[styles.toggleLabel, !biometricLockEnabled && styles.toggleLabelOff]}>
+              {biometricLockEnabled ? 'App Lock On' : 'App Lock Off'}
+            </Text>
+            <View style={[styles.toggleDot, biometricLockEnabled && styles.toggleDotActive]} />
+          </TouchableOpacity>
+        </View>
+
         <Text style={styles.sectionLabel}>STARTER CONTENT</Text>
         <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -231,6 +278,20 @@ export default function SettingsScreen() {
             expired items that demonstrate the expiry alert system — they are not your inventory.
             Edit or delete each record and add your own.
           </Text>
+        </View>
+
+        <Text style={styles.sectionLabel}>TOOLS</Text>
+        <View style={styles.linkCard}>
+          <TouchableOpacity
+            style={styles.linkRow}
+            activeOpacity={0.7}
+            onPress={() => router.push('/lantern' as Href)}
+            testID="lantern-link"
+          >
+            <Flashlight color={Colors.oliveLight} size={16} />
+            <Text style={styles.linkText}>Lantern</Text>
+            <ChevronRight color={Colors.textMuted} size={16} />
+          </TouchableOpacity>
         </View>
 
         <Text style={styles.sectionLabel}>HELP & LEGAL</Text>

@@ -34,6 +34,7 @@ struct MapView: View {
     @State private var showingPrepareConfirm = false
     @State private var pendingEstimate: TileDownloadManager.PackEstimate?
     @State private var pendingRegion: MKCoordinateRegion?
+    @State private var compass = CompassService()
 
     private var offlinePack: MapPack? {
         if let loc = userLocation {
@@ -203,6 +204,7 @@ struct MapView: View {
             // Search bar + results + weather banner (top area)
             VStack(spacing: 0) {
                 searchBar
+                compassChip
                 if !searchQuery.isEmpty {
                     searchResultsList
                 } else {
@@ -251,9 +253,13 @@ struct MapView: View {
         }
         .task {
             await fetchWeatherForSuggestions()
+            compass.start()
         }
         .onAppear { OrientationGate.isMapActive = true }
-        .onDisappear { OrientationGate.isMapActive = false }
+        .onDisappear {
+            OrientationGate.isMapActive = false
+            compass.stop()
+        }
         .alert("No Rally Points", isPresented: $showingNoRallyAlert) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -370,6 +376,33 @@ struct MapView: View {
         .background(Theme.bgCard)
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 1))
         .clipShape(.rect(cornerRadius: 10))
+    }
+
+    private var compassChip: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "location.north.fill")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(Theme.orange)
+                .rotationEffect(.degrees(compass.isAvailable ? -compass.heading : 0))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(compass.isAvailable
+                     ? "\(Int(compass.heading.rounded()))\u{00B0} \(CompassService.cardinal(for: compass.heading))"
+                     : "NO COMPASS")
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .foregroundStyle(Theme.textPrimary)
+                Text(compass.isAvailable ? "HEADING" : "SENSOR UNAVAILABLE")
+                    .font(.system(size: 8, weight: .bold))
+                    .tracking(1)
+                    .foregroundStyle(Theme.textMuted)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Theme.bgCard.opacity(0.95))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 1))
+        .clipShape(.rect(cornerRadius: 10))
+        .padding(.top, 8)
     }
 
     @ViewBuilder

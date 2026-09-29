@@ -5,5 +5,6 @@ import SwiftUI
 struct GRIDDOWNWidgetBundle: WidgetBundle {
     var body: some Widget {
         GRIDDOWNWidget()
+        AlertLiveActivityWidget()
     }
 }

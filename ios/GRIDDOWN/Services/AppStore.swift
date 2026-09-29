@@ -138,6 +138,14 @@ final class AppStore {
         defaults.set(overdue, forKey: "widget_overdue_count")
         defaults.set(low, forKey: "widget_low_count")
         WidgetCenter.shared.reloadAllTimelines()
+        AlertActivityService.shared.sync(
+            level: alertLevel,
+            groupName: groupName,
+            readyCount: ready,
+            memberCount: members.count,
+            overdueCount: overdue,
+            lowCount: low
+        )
     }
 
     var supplyStats: (total: Int, low: Int, categories: Int) {

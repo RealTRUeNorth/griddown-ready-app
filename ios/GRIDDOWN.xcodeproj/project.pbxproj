@@ -496,6 +496,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				CODE_SIGN_ENTITLEMENTS = GRIDDOWN/GRIDDOWN.entitlements;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "GRIDDOWN can lock itself behind Face ID (or Touch ID / passcode) to protect your group roster and notes on this device.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "GRIDDOWN uses your location to show local weather forecasts and to generate nearby rally points, routes, and offline map content for your group. Location is only used while the app is open and never leaves your device.";
@@ -532,6 +533,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				CODE_SIGN_ENTITLEMENTS = GRIDDOWN/GRIDDOWN.entitlements;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "GRIDDOWN can lock itself behind Face ID (or Touch ID / passcode) to protect your group roster and notes on this device.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "GRIDDOWN uses your location to show local weather forecasts and to generate nearby rally points, routes, and offline map content for your group. Location is only used while the app is open and never leaves your device.";

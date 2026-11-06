@@ -1,0 +1,146 @@
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* GRIDDOWN dark tactical theme */
+@layer base {
+  :root {
+    --background: 120 6% 10%;
+    --foreground: 45 18% 89%;
+
+    --card: 120 6% 15%;
+    --card-foreground: 45 18% 89%;
+
+    --popover: 120 6% 13%;
+    --popover-foreground: 45 18% 89%;
+
+    --primary: 74 27% 38%;
+    --primary-foreground: 45 18% 92%;
+
+    --secondary: 120 5% 20%;
+    --secondary-foreground: 45 18% 89%;
+
+    --muted: 120 5% 18%;
+    --muted-foreground: 40 6% 60%;
+
+    --accent: 29 67% 50%;
+    --accent-foreground: 45 18% 92%;
+
+    --destructive: 0 60% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 120 5% 23%;
+    --input: 120 5% 23%;
+    --ring: 29 67% 50%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 120 6% 12%;
+    --sidebar-foreground: 45 18% 89%;
+    --sidebar-primary: 74 27% 38%;
+    --sidebar-primary-foreground: 45 18% 92%;
+    --sidebar-accent: 120 5% 20%;
+    --sidebar-accent-foreground: 45 18% 89%;
+    --sidebar-border: 120 5% 23%;
+    --sidebar-ring: 29 67% 50%;
+
+    /* GRIDDOWN tokens (hex mirrors expo/constants/colors.ts) */
+    --gd-bg: #1A1D1A;
+    --gd-bg-card: #242824;
+    --gd-bg-card-light: #2E332E;
+    --gd-bg-elevated: #333833;
+    --gd-border: #3A3F3A;
+    --gd-border-light: #4A504A;
+    --gd-olive: #6B7A4A;
+    --gd-olive-light: #8B9A6A;
+    --gd-olive-muted: #4A5A3A;
+    --gd-orange: #D4822A;
+    --gd-orange-light: #E8A04A;
+    --gd-orange-muted: #8B5A1A;
+    --gd-red: #CC3333;
+    --gd-amber: #D4A22A;
+    --gd-green: #4A8B4A;
+    --gd-status-green: #4CAF50;
+    --gd-status-amber: #FFC107;
+    --gd-status-red: #F44336;
+    --gd-text: #E8E4DC;
+    --gd-text-secondary: #9A9890;
+    --gd-text-muted: #6A6860;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply hide-scrollbar;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-color: var(--gd-bg);
+    color: var(--gd-text);
+    font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .gd-label {
+    font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-weight: 700;
+  }
+  /* Subtle tactical grid texture */
+  .gd-grid-bg {
+    background-image:
+      linear-gradient(rgba(107, 122, 74, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(107, 122, 74, 0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+}
+
+/* Leaflet dark-mode treatment */
+.leaflet-container {
+  background: #141714;
+  font-family: inherit;
+}
+.leaflet-tile {
+  filter: grayscale(0.55) brightness(0.82) contrast(1.05) sepia(0.22) hue-rotate(50deg);
+}
+.leaflet-bar,
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--gd-bg-card);
+  color: var(--gd-text);
+  border: 1px solid var(--gd-border);
+}
+.leaflet-bar a {
+  background: var(--gd-bg-card) !important;
+  color: var(--gd-text) !important;
+  border-bottom-color: var(--gd-border) !important;
+}
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+}
+.leaflet-popup-content {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  margin: 10px 12px;
+}
+.gd-tile-loading {
+  background: #1e221e;
+}

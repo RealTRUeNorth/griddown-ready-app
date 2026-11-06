@@ -56,6 +56,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		XXAA11BB22CC33DD44EE55XX /* Exceptions for "GRIDDOWN" folder in "GRIDDOWN" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 105FC5792E9EAD3100EA8BCF /* GRIDDOWN */;
+		};
 		XX632BF178D53AF196D700XX /* Exceptions for "GRIDDOWNWidget" folder in "GRIDDOWNWidget" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -70,6 +77,9 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = GRIDDOWN;
 			sourceTree = "<group>";
+			exceptions = (
+				XXAA11BB22CC33DD44EE55XX /* Exceptions for "GRIDDOWN" folder in "GRIDDOWN" target */,
+			);
 		};
 		105FC58C2E9EAD3200EA8BCF /* GRIDDOWNTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -496,6 +506,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				CODE_SIGN_ENTITLEMENTS = GRIDDOWN/GRIDDOWN.entitlements;
+				INFOPLIST_FILE = GRIDDOWN/Info.plist;
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "GRIDDOWN can lock itself behind Face ID (or Touch ID / passcode) to protect your group roster and notes on this device.";
@@ -533,6 +544,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				CODE_SIGN_ENTITLEMENTS = GRIDDOWN/GRIDDOWN.entitlements;
+				INFOPLIST_FILE = GRIDDOWN/Info.plist;
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "GRIDDOWN can lock itself behind Face ID (or Touch ID / passcode) to protect your group roster and notes on this device.";

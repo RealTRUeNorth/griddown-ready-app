@@ -61,6 +61,29 @@ private func statsRow(_ state: AlertActivityAttributes.ContentState) -> some Vie
     }
 }
 
+/// Quick alert-level controls that run without opening the app.
+private func levelButtons(current: String) -> some View {
+    HStack(spacing: 8) {
+        ForEach([WidgetAlertLevel.amber, .red, .green], id: \.self) { lvl in
+            let isSelected = lvl.rawValue == current.lowercased()
+            Button(intent: WidgetSetAlertLevelIntent(level: lvl)) {
+                Text(lvl == .green ? "CLEAR" : (lvl == .amber ? "AMBER" : "RED"))
+                    .font(.system(size: 11, weight: .heavy))
+                    .tracking(0.5)
+                    .foregroundStyle(isSelected ? Color(hex: 0x1A1D1A) : alertColor(lvl.rawValue))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(isSelected ? alertColor(lvl.rawValue) : alertColor(lvl.rawValue).opacity(0.15))
+                    )
+            }
+            .buttonStyle(.borderless)
+        }
+        Spacer(minLength: 0)
+    }
+}
+
 // MARK: - Lock Screen / banner
 
 struct LockScreenAlertView: View {
@@ -91,6 +114,8 @@ struct LockScreenAlertView: View {
                 .foregroundStyle(Color(hex: 0xE8E4DC))
                 .lineLimit(1)
             statsRow(state)
+            levelButtons(current: state.level)
+                .padding(.top, 2)
         }
         .padding(.vertical, 4)
     }
@@ -131,12 +156,13 @@ struct AlertLiveActivityWidget: Widget {
                     }
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 8) {
                         Text(context.state.groupName)
                             .font(.system(size: 13, weight: .bold))
                             .foregroundStyle(Color(hex: 0xE8E4DC))
                             .lineLimit(1)
                         statsRow(context.state)
+                        levelButtons(current: context.state.level)
                     }
                 }
             } compactLeading: {

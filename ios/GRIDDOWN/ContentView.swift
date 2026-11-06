@@ -8,27 +8,34 @@ struct ContentView: View {
     @State private var showingShakeSos = false
     @State private var lock = BiometricLockService.shared
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage("griddown_onboarding_complete") private var onboardingComplete = false
+
+    @State private var selectedTab = 0
+    @State private var statusPath = NavigationPath()
+    @State private var prepPath = NavigationPath()
 
     var body: some View {
         ZStack {
-        TabView {
-            NavigationStack {
+        TabView(selection: $selectedTab) {
+            NavigationStack(path: $statusPath) {
                 StatusView()
                     .navigationDestination(for: NavRoute.self) { route in
                         routeView(route)
                     }
             }
+            .tag(0)
             .tabItem {
                 Image(systemName: "shield.fill")
                 Text("Status")
             }
 
-            NavigationStack {
+            NavigationStack(path: $prepPath) {
                 PrepView()
                     .navigationDestination(for: NavRoute.self) { route in
                         routeView(route)
                     }
             }
+            .tag(1)
             .tabItem {
                 Image(systemName: "shippingbox.fill")
                 Text("Prep")
@@ -40,6 +47,7 @@ struct ContentView: View {
                         routeView(route)
                     }
             }
+            .tag(2)
             .tabItem {
                 Image(systemName: "map.fill")
                 Text("Map")
@@ -51,6 +59,7 @@ struct ContentView: View {
                         routeView(route)
                     }
             }
+            .tag(3)
             .tabItem {
                 Image(systemName: "antenna.radiowaves.left.and.right")
                 Text("Comms")
@@ -62,6 +71,7 @@ struct ContentView: View {
                         routeView(route)
                     }
             }
+            .tag(4)
             .tabItem {
                 Image(systemName: "book.fill")
                 Text("Intel")
@@ -82,6 +92,7 @@ struct ContentView: View {
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active:
+                appStore.consumePendingWidgetAlertLevel()
                 if let level = lock.consumeIntentAlertLevel() {
                     appStore.updateAlertLevel(level)
                 }
@@ -95,6 +106,21 @@ struct ContentView: View {
             if let level = lock.consumeIntentAlertLevel() {
                 appStore.updateAlertLevel(level)
             }
+        }
+        .onOpenURL { url in
+            if let target = DeepLink.route(for: url) {
+                handleRoute(target)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .griddownDeepLink)) { note in
+            guard let target = note.object as? DeepLink.Target else { return }
+            handleRoute(target)
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { !onboardingComplete },
+            set: { onboardingComplete = !$0 }
+        )) {
+            OnboardingView()
         }
         .confirmationDialog(
             "Shake Detected",
@@ -115,6 +141,16 @@ struct ContentView: View {
             } else {
                 motionService.stop()
             }
+        }
+    }
+
+    private func handleRoute(_ target: DeepLink.Target) {
+        switch target {
+        case .status:
+            selectedTab = 0
+        case .supplies:
+            selectedTab = 1
+            prepPath.append(NavRoute.supplies)
         }
     }
 

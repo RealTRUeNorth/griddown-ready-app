@@ -20,12 +20,17 @@ final class AppStore {
 
     private let storageKey = "griddown_app_data"
     private let versionKey = "griddown_data_version"
+    private let appGroupID = "group.app.rork.m1n8sfy2h3980p3hrfm5j"
+    /// Written by the interactive widget / Live Activity intent; consumed on
+    /// app activation because extension processes can't touch this store.
+    private let pendingAlertKey = "griddown_pending_alert_level"
     private let currentDataVersion = 4
     private var loadedFromStorage = false
 
     init() {
         loadData()
         seedLocalPoisIfNeeded()
+        consumePendingWidgetAlertLevel()
         writeWidgetSnapshot()
         if remindersEnabled {
             // Re-register pending requests on launch — idempotent reschedule
@@ -124,7 +129,7 @@ final class AppStore {
     /// Publishes a compact snapshot to the shared App Group container for the
     /// home-screen widget and asks WidgetKit to refresh its timelines.
     func writeWidgetSnapshot() {
-        guard let defaults = UserDefaults(suiteName: "group.app.rork.m1n8sfy2h3980p3hrfm5j") else { return }
+        guard let defaults = UserDefaults(suiteName: appGroupID) else { return }
         let ready = members.filter { $0.status == .ready }.count
         let overdue = members.filter { member in
             let state = CheckIn.state(for: member, intervalHours: checkInIntervalHours)
@@ -146,6 +151,17 @@ final class AppStore {
             overdueCount: overdue,
             lowCount: low
         )
+    }
+
+    /// Applies and clears an alert-level change requested from the
+    /// interactive widget or Lock Screen Live Activity while the app was
+    /// closed. No-op when nothing is pending.
+    func consumePendingWidgetAlertLevel() {
+        guard let defaults = UserDefaults(suiteName: appGroupID),
+              let raw = defaults.string(forKey: pendingAlertKey),
+              let level = AlertLevel(rawValue: raw) else { return }
+        defaults.removeObject(forKey: pendingAlertKey)
+        updateAlertLevel(level)
     }
 
     var supplyStats: (total: Int, low: Int, categories: Int) {

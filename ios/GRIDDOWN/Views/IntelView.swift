@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct IntelView: View {
     @Environment(AppStore.self) var store
@@ -8,6 +9,9 @@ struct IntelView: View {
     @State private var pendingImportRaw: String?
     @State private var pendingImportSummary: String = ""
     @State private var showingImportConfirm = false
+    @State private var exportFileURL: URL?
+    @State private var showingShareSheet = false
+    @State private var showingFileImporter = false
 
     var body: some View {
         ScrollView {
@@ -75,6 +79,37 @@ struct IntelView: View {
                     )
                 }
                 .buttonStyle(.plain)
+
+                Button {
+                    if let url = makeBackupFile() {
+                        exportFileURL = url
+                        showingShareSheet = true
+                    } else {
+                        backupAlertTitle = "Export Failed"
+                        backupAlertMessage = "Could not generate the backup."
+                        showingBackupAlert = true
+                    }
+                } label: {
+                    NavCard(
+                        icon: "doc.badge.arrow.up.fill", iconColor: Theme.greenLight,
+                        iconBg: Theme.greenLight.opacity(0.15),
+                        title: "Share Backup as File",
+                        description: "Save or send your ops kit as a JSON file"
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    showingFileImporter = true
+                } label: {
+                    NavCard(
+                        icon: "doc.badge.arrow.down.fill", iconColor: Theme.amberLight,
+                        iconBg: Theme.amberLight.opacity(0.15),
+                        title: "Import from File",
+                        description: "Restore an ops kit from a backup JSON file"
+                    )
+                }
+                .buttonStyle(.plain)
             }
             .padding(16)
             .padding(.bottom, 40)
@@ -103,6 +138,17 @@ struct IntelView: View {
             }
         } message: {
             Text("This will overwrite everything with the backup:\n\n\(pendingImportSummary)")
+        }
+        .sheet(isPresented: $showingShareSheet) {
+            if let exportFileURL {
+                ActivityShareSheet(items: [exportFileURL])
+            }
+        }
+        .fileImporter(
+            isPresented: $showingFileImporter,
+            allowedContentTypes: [.json]
+        ) { result in
+            handleFileImport(result)
         }
     }
 
@@ -138,6 +184,46 @@ struct IntelView: View {
         pendingImportSummary = summary
         showingImportConfirm = true
     }
+
+    /// Writes the ops backup to a temp JSON file for the share sheet.
+    private func makeBackupFile() -> URL? {
+        guard let json = store.exportOpsBackup() else { return nil }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("GRIDDOWN-Ops-Backup.json")
+        do {
+            try json.write(to: url, atomically: true, encoding: .utf8)
+            return url
+        } catch {
+            return nil
+        }
+    }
+
+    private func handleFileImport(_ result: Result<URL, any Error>) {
+        guard case .success(let url) = result else { return }
+        let secured = url.startAccessingSecurityScopedResource()
+        defer { if secured { url.stopAccessingSecurityScopedResource() } }
+        guard let raw = try? String(contentsOf: url, encoding: .utf8),
+              let summary = store.opsBackupSummary(raw) else {
+            backupAlertTitle = "Invalid Backup"
+            backupAlertMessage = "This file is not a valid GRIDDOWN ops backup."
+            showingBackupAlert = true
+            return
+        }
+        pendingImportRaw = raw
+        pendingImportSummary = summary
+        showingImportConfirm = true
+    }
+}
+
+/// UIKit share sheet wrapper for exporting the backup JSON file.
+struct ActivityShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 struct GroupView: View {

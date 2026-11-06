@@ -1,5 +1,6 @@
 import WidgetKit
 import SwiftUI
+import AppIntents
 
 /// Compact snapshot the main app publishes to the shared App Group
 /// container; the widget only ever reads these values.
@@ -46,8 +47,6 @@ nonisolated struct Provider: TimelineProvider {
         completion(Timeline(entries: [entry], policy: .after(next)))
     }
 }
-
-// MARK: - Theme
 
 private extension Color {
     init(hex: UInt) {
@@ -106,6 +105,10 @@ struct WidgetEntryView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .containerBackground(style.background, for: .widget)
+        .widgetURL(URL(string: "griddown://status"))
+        .overlay(alignment: .bottomTrailing) {
+            alertMenu
+        }
     }
 
     private var statRow: some View {
@@ -117,6 +120,23 @@ struct WidgetEntryView: View {
             stat("LOW", "\(entry.snapshot.lowCount)", lowColor)
             Spacer(minLength: 0)
         }
+    }
+
+    /// Interactive alert-level control — runs without opening the app.
+    private var alertMenu: some View {
+        Menu {
+            ForEach([WidgetAlertLevel.green, .amber, .red], id: \.self) { lvl in
+                Button(intent: WidgetSetAlertLevelIntent(level: lvl)) {
+                    Label(lvl == .green ? "All Clear" : (lvl == .amber ? "Elevated" : "Red Alert"),
+                          systemImage: lvl == .green ? "checkmark.circle" : (lvl == .amber ? "eye" : "exclamationmark.triangle.fill"))
+                }
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle.fill")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(Color(hex: 0x6A6860))
+        }
+        .padding(6)
     }
 
     private func stat(_ label: String, _ value: String, _ color: Color) -> some View {
@@ -140,7 +160,7 @@ struct GRIDDOWNWidget: Widget {
             WidgetEntryView(entry: entry)
         }
         .configurationDisplayName("GRIDDOWN Status")
-        .description("Group alert level, readiness, and inventory alerts at a glance.")
+        .description("Group alert level, readiness, and inventory alerts at a glance. Touch the menu to change the alert level.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }

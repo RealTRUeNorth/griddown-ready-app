@@ -241,13 +241,139 @@ struct POI: Identifiable, Codable, Hashable, Sendable {
     var createdAt: String
 }
 
+/// PACE movement plan: Primary / Alternate / Contingency / Emergency.
+struct PacePlan: Codable, Hashable, Sendable {
+    var primary: String?
+    var alternate: String?
+    var contingency: String?
+    var emergency: String?
+
+    var hasContent: Bool {
+        [primary, alternate, contingency, emergency].compactMap { $0 }.contains { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+    }
+}
+
 struct Route: Identifiable, Codable, Hashable, Sendable {
     var id: String
     var name: String
     var color: String
     var waypoints: [Coordinates]
     var notes: String?
+    var pace: PacePlan?
     var createdAt: String
+}
+
+// MARK: - Equipment (armory / serialized gear)
+
+enum EquipmentCategory: String, Codable, CaseIterable, Sendable {
+    case firearms, ammunition, optics, medical, comms, tools, protective, navigation, other
+
+    var label: String {
+        switch self {
+        case .firearms: "Firearms"
+        case .ammunition: "Ammunition"
+        case .optics: "Optics"
+        case .medical: "Medical"
+        case .comms: "Comms"
+        case .tools: "Tools"
+        case .protective: "Protective"
+        case .navigation: "Navigation"
+        case .other: "Other"
+        }
+    }
+}
+
+enum EquipmentCondition: String, Codable, CaseIterable, Sendable {
+    case new, good, fair, poor
+
+    var label: String { rawValue.capitalized }
+}
+
+struct EquipmentItem: Identifiable, Codable, Hashable, Sendable {
+    var id: String
+    var name: String
+    var category: EquipmentCategory
+    var quantity: Int
+    var serial: String?
+    var condition: EquipmentCondition
+    var assignedTo: String?
+    var location: String?
+    var notes: String?
+    var isSample: Bool?
+}
+
+// MARK: - Threat register
+
+enum ThreatCategory: String, Codable, CaseIterable, Sendable {
+    case natural, infrastructure, civil, health, security, other
+
+    var label: String {
+        switch self {
+        case .natural: "Natural"
+        case .infrastructure: "Infrastructure"
+        case .civil: "Civil"
+        case .health: "Health"
+        case .security: "Security"
+        case .other: "Other"
+        }
+    }
+}
+
+enum ThreatLevel: String, Codable, CaseIterable, Sendable {
+    case low, medium, high
+
+    var rank: Int {
+        switch self {
+        case .low: 1
+        case .medium: 2
+        case .high: 3
+        }
+    }
+
+    var label: String { rawValue.capitalized }
+}
+
+enum ThreatStatus: String, Codable, CaseIterable, Sendable {
+    case monitoring, active, mitigated
+
+    var label: String { rawValue.capitalized }
+}
+
+struct Threat: Identifiable, Codable, Hashable, Sendable {
+    var id: String
+    var name: String
+    var category: ThreatCategory
+    var likelihood: ThreatLevel
+    var impact: ThreatLevel
+    var status: ThreatStatus
+    var notes: String?
+    var coordinates: Coordinates?
+    var createdAt: String
+    var updatedAt: String
+
+    /// Combined severity from likelihood × impact ranks.
+    var severity: ThreatLevel {
+        let score = likelihood.rank * impact.rank
+        if score >= 9 { return .high }
+        if score >= 4 { return .medium }
+        return .low
+    }
+}
+
+// MARK: - Area study workbook
+
+struct AreaStudySectionData: Codable, Hashable, Sendable {
+    var id: String
+    var content: String
+}
+
+struct AreaStudy: Codable, Hashable, Sendable {
+    var sections: [AreaStudySectionData] = []
+    var updatedAt: String?
+
+    func content(for sectionId: String) -> String {
+        sections.first(where: { $0.id == sectionId })?.content ?? ""
+    }
 }
 
 enum CommsBand: String, Codable, CaseIterable {
@@ -462,6 +588,9 @@ struct AppData: Codable, Sendable {
     var commsChannels: [CommsChannel] = []
     var commsRepeaters: [CommsRepeater] = []
     var kiwixLibrary: [KiwixResource] = []
+    var equipment: [EquipmentItem] = []
+    var threats: [Threat] = []
+    var areaStudy = AreaStudy()
 }
 
 extension AppData {
@@ -482,6 +611,9 @@ extension AppData {
         commsChannels = try container.decodeIfPresent([CommsChannel].self, forKey: .commsChannels) ?? []
         commsRepeaters = try container.decodeIfPresent([CommsRepeater].self, forKey: .commsRepeaters) ?? []
         kiwixLibrary = try container.decodeIfPresent([KiwixResource].self, forKey: .kiwixLibrary) ?? []
+        equipment = try container.decodeIfPresent([EquipmentItem].self, forKey: .equipment) ?? []
+        threats = try container.decodeIfPresent([Threat].self, forKey: .threats) ?? []
+        areaStudy = try container.decodeIfPresent(AreaStudy.self, forKey: .areaStudy) ?? AreaStudy()
     }
 }
 
@@ -517,6 +649,9 @@ struct OpsBackupData: Codable, Sendable {
     var commsChannels: [CommsChannel]?
     var commsRepeaters: [CommsRepeater]?
     var kiwixLibrary: [KiwixResource]?
+    var equipment: [EquipmentItem]?
+    var threats: [Threat]?
+    var areaStudy: AreaStudy?
 
     var hasContent: Bool {
         alertLevel != nil || members != nil || supplies != nil || checklists != nil ||

@@ -19,6 +19,8 @@ import {
   Heart,
   Upload,
   Download,
+  Map as MapIcon,
+  ShieldAlert,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
@@ -86,14 +88,16 @@ function NavCard({
 }
 
 export default function IntelHubScreen() {
-  const { members, kiwixLibrary, exportOpsBackup, importOpsBackup, currentSnapshot } = useAppData();
+  const { members, kiwixLibrary, equipment, threats, areaStudy, exportOpsBackup, importOpsBackup, currentSnapshot } = useAppData();
+
+  const areaStudyFilled = areaStudy.sections.filter((s) => s.content.trim().length > 0).length;
 
   const readyMembers = members.filter((m) => m.status === 'ready').length;
 
   const handleExportBackup = useCallback(async () => {
     const json = exportOpsBackup();
     const counts = backupCounts(currentSnapshot());
-    const countsText = `${counts.members} members · ${counts.supplies} supplies · ${counts.pois} POIs · ${counts.routes} routes · ${counts.channels} channels · ${counts.repeaters} repeaters`;
+    const countsText = `${counts.members} members · ${counts.supplies} supplies · ${counts.equipment} equipment · ${counts.threats} threats · ${counts.pois} POIs · ${counts.routes} routes · ${counts.channels} channels · ${counts.repeaters} repeaters`;
 
     // Prefer the system share sheet so the backup can go anywhere — Files,
     // Messages, AirDrop, mail. Dismissing falls through to clipboard.
@@ -141,7 +145,7 @@ export default function IntelHubScreen() {
       const counts = backupCounts(parsed);
       Alert.alert(
         'Replace All Data?',
-        `This will overwrite everything with the backup:\n\n${counts.members} members · ${counts.supplies} supplies · ${counts.pois} POIs · ${counts.routes} routes · ${counts.channels} channels · ${counts.repeaters} repeaters`,
+        `This will overwrite everything with the backup:\n\n${counts.members} members · ${counts.supplies} supplies · ${counts.equipment} equipment · ${counts.threats} threats · ${counts.pois} POIs · ${counts.routes} routes · ${counts.channels} channels · ${counts.repeaters} repeaters`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -232,6 +236,26 @@ export default function IntelHubScreen() {
         badge={`${defaultGuides.length}`}
         badgeColor={Colors.olive}
         onPress={() => router.push('/intel/guides' as Href)}
+      />
+
+      <NavCard
+        icon={<MapIcon color={Colors.greenLight} size={24} />}
+        iconBg="rgba(76, 175, 80, 0.15)"
+        title="Area Study Workbook"
+        description="Guided assessment of your operational environment"
+        badge={`${areaStudyFilled}/8`}
+        badgeColor={areaStudyFilled === 8 ? Colors.statusGreen : Colors.olive}
+        onPress={() => router.push('/area-study' as Href)}
+      />
+
+      <NavCard
+        icon={<ShieldAlert color={Colors.redLight} size={24} />}
+        iconBg={Colors.redMuted}
+        title="Threat Register"
+        description="Triage local hazards by likelihood and impact"
+        badge={threats.length > 0 ? `${threats.length}` : undefined}
+        badgeColor={Colors.statusRed}
+        onPress={() => router.push('/threats' as Href)}
       />
 
       <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>DATA & BACKUP</Text>

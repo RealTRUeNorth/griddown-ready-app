@@ -572,3 +572,60 @@ enum MockData {
         ]
     }
 }
+
+extension MockData {
+    /// Seed armory / serialized gear — marked as sample so users can spot demo records.
+    static let seedEquipment: [EquipmentItem] = [
+        EquipmentItem(
+            id: "e_fire_1", name: "Ruger 10/22", category: .firearms,
+            quantity: 1, serial: "RGR-8231-44", condition: .good,
+            assignedTo: "Team Lead", location: "Safe — primary",
+            notes: "Zeroed at 50 yd, 4× scope", isSample: true
+        ),
+        EquipmentItem(
+            id: "e_amm_1", name: ".22LR Match", category: .ammunition,
+            quantity: 1500, serial: nil, condition: .new,
+            assignedTo: nil, location: "Safe — lower drawer",
+            notes: "Rotate range use; store dry", isSample: true
+        ),
+        EquipmentItem(
+            id: "e_prot_1", name: "N95 Respirators", category: .protective,
+            quantity: 40, serial: nil, condition: .good,
+            assignedTo: nil, location: nil,
+            notes: "Sealed bags, 10 per go-bag", isSample: true
+        ),
+        EquipmentItem(
+            id: "e_nav_1", name: "Compass — Silva Explorer", category: .navigation,
+            quantity: 2, serial: nil, condition: .good,
+            assignedTo: "Team Lead / Scout", location: nil,
+            notes: "Paired with paper area map", isSample: true
+        ),
+        EquipmentItem(
+            id: "e_med_1", name: "CAT Tourniquets", category: .medical,
+            quantity: 4, serial: nil, condition: .new,
+            assignedTo: nil, location: "Trauma kit + vehicles",
+            notes: "One per kit — check dates yearly", isSample: true
+        ),
+    ]
+
+    /// The Area Study workbook's guided sections — the classic operational
+    /// environment layers adapted for household / neighborhood preparedness.
+    static let areaStudyTemplate: [(id: String, title: String, prompt: String)] = [
+        ("terrain", "Area & Terrain",
+         "Bodies of water, bridges and choke points, high ground, flood zones. Where does the terrain funnel or stop movement?"),
+        ("population", "People & Decision-Makers",
+         "Who lives nearby? Who do neighbors look to in a crisis? Key contacts: CERT lead, ham operators, block captains, trusted medical professionals."),
+        ("infrastructure", "Utilities & Infrastructure",
+         "Power grid feed, water and gas shutoffs for your home, cell coverage dead zones, hospitals and fire stations, substations and pumping stations."),
+        ("threats", "Threats & Hazards",
+         "Seasonal weather risks, industrial or HazMat sites, crime patterns, civil unrest potential. Rank the top five threats to your specific location."),
+        ("routes", "Routes & Movement",
+         "Primary egress route and alternates, routes that stay out of flood or crowd zones, fuel and water stops along the way, travel times on foot vs vehicle."),
+        ("resources", "Resources & Rally Points",
+         "Water sources that survive grid-down, rally points (primary and backup), supply caches, sources of firewood, fuel, and salvageable materials."),
+        ("comms", "Communications Plan",
+         "Primary and alternate channels, meeting frequencies and times, who calls whom and when, duress words, what happens if comms fail for 24 hours."),
+        ("plan", "Group Plan",
+         "For each member: role, go-bag status, school/work pickup duties, shelter-in-place vs evacuate criteria and trigger points, pets and livestock."),
+    ]
+}

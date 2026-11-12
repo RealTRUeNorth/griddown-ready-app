@@ -12,6 +12,12 @@ import Weather from '@/pages/Weather';
 import MapPage from '@/pages/MapPage';
 import Comms from '@/pages/Comms';
 import Intel from '@/pages/Intel';
+import ReportBuilder from '@/pages/ReportBuilder';
+import AreaStudy from '@/pages/AreaStudy';
+import Threats from '@/pages/Threats';
+import AddThreat from '@/pages/AddThreat';
+import AddEquipment from '@/pages/AddEquipment';
+import Equipment from '@/pages/Equipment';
 import GuideDetail from '@/pages/GuideDetail';
 import ChecklistDetail from '@/pages/ChecklistDetail';
 import MemberDetail from '@/pages/MemberDetail';
@@ -71,6 +77,12 @@ function AppInner() {
           <Route path="/" element={<Status />} />
           <Route path="/prep" element={<Prep />} />
           <Route path="/prep/weather" element={<Weather />} />
+          <Route path="/prep/equipment" element={<Equipment />} />
+          <Route path="/add-equipment" element={<AddEquipment />} />
+          <Route path="/area-study" element={<AreaStudy />} />
+          <Route path="/threats" element={<Threats />} />
+          <Route path="/add-threat" element={<AddThreat />} />
+          <Route path="/report-builder" element={<ReportBuilder />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/comms" element={<Comms />} />
           <Route path="/intel" element={<Intel />} />

@@ -486,6 +486,10 @@ struct AddRouteView: View {
     @State private var waypoints: [Coordinates]
     @State private var latInput: String = ""
     @State private var lngInput: String = ""
+    @State private var pacePrimary: String
+    @State private var paceAlternate: String
+    @State private var paceContingency: String
+    @State private var paceEmergency: String
 
     private let colors = MockData.routeColors
 
@@ -495,6 +499,10 @@ struct AddRouteView: View {
         _selectedColorIndex = State(initialValue: existing.flatMap { MockData.routeColors.firstIndex(of: $0.color) } ?? 0)
         _notes = State(initialValue: existing?.notes ?? "")
         _waypoints = State(initialValue: existing?.waypoints ?? [])
+        _pacePrimary = State(initialValue: existing?.pace?.primary ?? "")
+        _paceAlternate = State(initialValue: existing?.pace?.alternate ?? "")
+        _paceContingency = State(initialValue: existing?.pace?.contingency ?? "")
+        _paceEmergency = State(initialValue: existing?.pace?.emergency ?? "")
     }
 
     var isEditing: Bool { existing != nil }
@@ -620,13 +628,37 @@ struct AddRouteView: View {
                     FormFieldLabel(text: "NOTES (OPTIONAL)")
                     FormTextField(placeholder: "Route details, hazards, landmarks...", text: $notes, multiline: true)
 
+                    HStack(spacing: 4) {
+                        Text("PACE PLAN (OPTIONAL)")
+                            .font(.system(size: 10, weight: .bold))
+                            .tracking(1.5)
+                            .foregroundStyle(Theme.textMuted)
+                        Spacer()
+                        Text("PRIMARY · ALT · CONT · EMERG")
+                            .font(.system(size: 9, weight: .heavy))
+                            .tracking(1)
+                            .foregroundStyle(Theme.orangeLight)
+                    }
+                    .padding(.top, 6)
+                    FormTextField(placeholder: "Primary — the planned route", text: $pacePrimary, multiline: true)
+                    FormTextField(placeholder: "Alternate — if primary is blocked", text: $paceAlternate, multiline: true)
+                    FormTextField(placeholder: "Contingency — if alternate fails", text: $paceContingency, multiline: true)
+                    FormTextField(placeholder: "Emergency — last-resort movement", text: $paceEmergency, multiline: true)
+
                     FormSaveButton(title: isEditing ? "Save Changes" : "Create Route", color: Theme.olive, enabled: canSave) {
+                        let trimmedPace = PacePlan(
+                            primary: pacePrimary.trimmingCharacters(in: .whitespaces),
+                            alternate: paceAlternate.trimmingCharacters(in: .whitespaces),
+                            contingency: paceContingency.trimmingCharacters(in: .whitespaces),
+                            emergency: paceEmergency.trimmingCharacters(in: .whitespaces)
+                        )
                         let route = Route(
                             id: existing?.id ?? "route_\(Int(Date().timeIntervalSince1970))",
                             name: name.trimmingCharacters(in: .whitespaces),
                             color: colors[selectedColorIndex],
                             waypoints: waypoints,
                             notes: notes.trimmingCharacters(in: .whitespaces).isEmpty ? nil : notes.trimmingCharacters(in: .whitespaces),
+                            pace: trimmedPace.hasContent ? trimmedPace : nil,
                             createdAt: existing?.createdAt ?? ISO8601DateFormatter().string(from: Date())
                         )
                         if existing != nil {

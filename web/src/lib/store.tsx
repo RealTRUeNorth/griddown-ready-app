@@ -2,29 +2,33 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import {
   AlertLevel,
   AppData,
+  AreaStudy,
   Checklist,
   ChecklistItem,
   CommsChannel,
   CommsRepeater,
   Coordinates,
+  EquipmentItem,
   GroupMember,
   KiwixResource,
   POI,
   Route,
   SupplyItem,
+  Threat,
 } from '@/lib/types';
 import { defaultMembers } from '@/lib/data/members';
-import { seedSupplies } from '@/lib/data/supplies';
+import { seedSupplies, seedEquipment } from '@/lib/data/supplies';
 import { defaultChecklists } from '@/lib/data/checklists';
 import { defaultCommsChannels, defaultCommsRepeaters } from '@/lib/data/comms';
 import { kiwixCatalog } from '@/lib/data/kiwix';
 import { allSeedPois, defaultRoutes as seedRoutes, generateLocalPois, generateLocalRoutes } from '@/lib/data/pois';
 import { parseOpsBackup, serializeOpsBackup } from '@/lib/opsBackup';
+import { areaStudyProgress, makeEmptyAreaStudy } from '@/lib/data/areaStudy';
 
 const STORAGE_KEY = 'griddown_app_data';
 const DATA_VERSION_KEY = 'griddown_data_version';
 const ONBOARDING_KEY = 'griddown_onboarding_complete';
-const CURRENT_DATA_VERSION = 4;
+const CURRENT_DATA_VERSION = 5;
 const DEFAULT_CHECK_IN_HOURS = 6;
 
 const defaultAppData: AppData = {
@@ -41,6 +45,9 @@ const defaultAppData: AppData = {
   commsChannels: defaultCommsChannels,
   commsRepeaters: defaultCommsRepeaters,
   kiwixLibrary: [],
+  equipment: seedEquipment,
+  threats: [],
+  areaStudy: makeEmptyAreaStudy(),
 };
 
 /** One-shot location acquisition for first-launch POI seeding. */
@@ -74,6 +81,16 @@ interface AppContextValue {
   commsChannels: CommsChannel[];
   commsRepeaters: CommsRepeater[];
   kiwixLibrary: KiwixResource[];
+  equipment: EquipmentItem[];
+  threats: Threat[];
+  areaStudy: AreaStudy;
+  addEquipment: (item: EquipmentItem) => void;
+  updateEquipment: (item: EquipmentItem) => void;
+  removeEquipment: (id: string) => void;
+  addThreat: (threat: Threat) => void;
+  updateThreat: (threat: Threat) => void;
+  removeThreat: (id: string) => void;
+  updateAreaStudySection: (sectionId: string, content: string) => void;
   onboardingComplete: boolean;
   completeOnboarding: (groupName: string, level: AlertLevel) => void;
   updateAlertLevel: (level: AlertLevel) => void;
@@ -133,6 +150,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [commsChannels, setCommsChannels] = useState<CommsChannel[]>(defaultCommsChannels);
   const [commsRepeaters, setCommsRepeaters] = useState<CommsRepeater[]>(defaultCommsRepeaters);
   const [kiwixLibrary, setKiwixLibrary] = useState<KiwixResource[]>([]);
+  const [equipment, setEquipment] = useState<EquipmentItem[]>(seedEquipment);
+  const [threats, setThreats] = useState<Threat[]>([]);
+  const [areaStudy, setAreaStudy] = useState<AreaStudy>(makeEmptyAreaStudy());
   const [onboardingComplete, setOnboardingComplete] = useState<boolean>(() => localStorage.getItem(ONBOARDING_KEY) === 'true');
   const [loaded, setLoaded] = useState(false);
 
@@ -155,6 +175,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             parsed.routes = mergeById(parsed.routes, seedRoutes);
             parsed.checklists = mergeById(parsed.checklists ?? [], defaultChecklists);
             parsed.supplies = mergeById(parsed.supplies ?? [], seedSupplies);
+            parsed.equipment = mergeById(parsed.equipment ?? [], seedEquipment);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
             localStorage.setItem(DATA_VERSION_KEY, String(CURRENT_DATA_VERSION));
           }
@@ -195,6 +216,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCommsChannels(d.commsChannels ?? defaultCommsChannels);
     setCommsRepeaters(d.commsRepeaters ?? defaultCommsRepeaters);
     setKiwixLibrary(d.kiwixLibrary ?? []);
+    setEquipment(d.equipment ?? []);
+    setThreats(d.threats ?? []);
+    setAreaStudy(d.areaStudy ?? makeEmptyAreaStudy());
   };
 
   const persistData = useCallback(
@@ -213,6 +237,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         commsChannels,
         commsRepeaters,
         kiwixLibrary,
+        equipment,
+        threats,
+        areaStudy,
         ...overrides,
       };
       try {
@@ -221,7 +248,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.log('Failed to persist data:', e);
       }
     },
-    [alertLevel, groupName, checkInIntervalHours, remindersEnabled, shakeSosEnabled, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary]
+    [alertLevel, groupName, checkInIntervalHours, remindersEnabled, shakeSosEnabled, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary, equipment, threats, areaStudy]
   );
 
   const updateAlertLevel = useCallback((level: AlertLevel) => {
@@ -443,6 +470,77 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     persistData({ kiwixLibrary: updated });
   }, [kiwixLibrary, persistData]);
 
+  const addEquipment = useCallback((item: EquipmentItem) => {
+    const updated = [...equipment, item];
+    setEquipment(updated);
+    persistData({ equipment: updated });
+  }, [equipment, persistData]);
+
+  const updateEquipment = useCallback((item: EquipmentItem) => {
+    const updated = equipment.map((e) => (e.id === item.id ? item : e));
+    setEquipment(updated);
+    persistData({ equipment: updated });
+  }, [equipment, persistData]);
+
+  const removeEquipment = useCallback((id: string) => {
+    const updated = equipment.filter((e) => e.id !== id);
+    setEquipment(updated);
+    persistData({ equipment: updated });
+  }, [equipment, persistData]);
+
+  const addThreat = useCallback((threat: Threat) => {
+    const updated = [...threats, threat];
+    setThreats(updated);
+    persistData({ threats: updated });
+  }, [threats, persistData]);
+
+  const updateThreat = useCallback((threat: Threat) => {
+    const updated = threats.map((t) => (t.id === threat.id ? threat : t));
+    setThreats(updated);
+    persistData({ threats: updated });
+  }, [threats, persistData]);
+
+  const removeThreat = useCallback((id: string) => {
+    const updated = threats.filter((t) => t.id !== id);
+    setThreats(updated);
+    persistData({ threats: updated });
+  }, [threats, persistData]);
+
+  const updateAreaStudySection = useCallback((sectionId: string, content: string) => {
+    setAreaStudy((prev) => {
+      const sections = [...prev.sections];
+      const idx = sections.findIndex((s) => s.id === sectionId);
+      const updated: AreaStudy = {
+        sections: idx >= 0 ? sections.map((s, i) => (i === idx ? { ...s, content } : s)) : [...sections, { id: sectionId, content }],
+        updatedAt: new Date().toISOString(),
+      };
+      try {
+        const data: AppData = {
+          alertLevel,
+          groupName,
+          checkInIntervalHours,
+          remindersEnabled,
+          shakeSosEnabled,
+          members,
+          supplies,
+          checklists,
+          pois,
+          routes,
+          commsChannels,
+          commsRepeaters,
+          kiwixLibrary,
+          equipment,
+          threats,
+          areaStudy: updated,
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch (e) {
+        console.log('Failed to persist area study:', e);
+      }
+      return updated;
+    });
+  }, [alertLevel, groupName, checkInIntervalHours, remindersEnabled, shakeSosEnabled, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary, equipment, threats]);
+
   const supplyStats = useMemo(() => {
     const total = supplies.length;
     const low = supplies.filter((s) => s.quantity <= s.minimumQuantity).length;
@@ -473,7 +571,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     commsChannels,
     commsRepeaters,
     kiwixLibrary,
-  }), [alertLevel, groupName, checkInIntervalHours, remindersEnabled, shakeSosEnabled, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary]);
+    equipment,
+    threats,
+    areaStudy,
+  }), [alertLevel, groupName, checkInIntervalHours, remindersEnabled, shakeSosEnabled, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary, equipment, threats, areaStudy]);
 
   const exportOpsBackup = useCallback(() => serializeOpsBackup(currentSnapshot()), [currentSnapshot]);
 
@@ -512,6 +613,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     commsChannels,
     commsRepeaters,
     kiwixLibrary,
+    equipment,
+    threats,
+    areaStudy,
+    addEquipment,
+    updateEquipment,
+    removeEquipment,
+    addThreat,
+    updateThreat,
+    removeThreat,
+    updateAreaStudySection,
     onboardingComplete,
     completeOnboarding,
     updateAlertLevel,

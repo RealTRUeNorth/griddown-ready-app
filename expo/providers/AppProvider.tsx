@@ -18,11 +18,15 @@ import {
   CommsChannel,
   CommsRepeater,
   KiwixResource,
+  EquipmentItem,
+  Threat,
+  AreaStudy,
 } from '@/types';
 import { defaultCommsChannels, defaultCommsRepeaters } from '@/mocks/comms';
 import { kiwixCatalog } from '@/mocks/kiwix';
 import { allSeedPois, defaultRoutes as seedRoutes, generateLocalPois, generateLocalRoutes } from '@/mocks/pois';
-import { seedSupplies } from '@/mocks/supplies';
+import { seedSupplies, seedEquipment } from '@/mocks/supplies';
+import { makeEmptyAreaStudy } from '@/mocks/areaStudy';
 import { parseOpsBackup, serializeOpsBackup } from '@/utils/opsBackup';
 import {
   cancelAllReminders,
@@ -34,7 +38,7 @@ import {
 
 const STORAGE_KEY = 'griddown_app_data';
 const DATA_VERSION_KEY = 'griddown_data_version';
-const CURRENT_DATA_VERSION = 4; // Bumped when seed checklists/supplies expanded
+const CURRENT_DATA_VERSION = 5; // v5: added equipment, threats, area study, route PACE
 const DEFAULT_CHECK_IN_HOURS = 6;
 
 const defaultAppData: AppData = {
@@ -51,6 +55,9 @@ const defaultAppData: AppData = {
   commsChannels: defaultCommsChannels,
   commsRepeaters: defaultCommsRepeaters,
   kiwixLibrary: [],
+  equipment: seedEquipment,
+  threats: [],
+  areaStudy: makeEmptyAreaStudy(),
 };
 
 /**
@@ -104,6 +111,9 @@ export const [AppProvider, useAppData] = createContextHook(() => {
   const [commsChannels, setCommsChannels] = useState<CommsChannel[]>(defaultCommsChannels);
   const [commsRepeaters, setCommsRepeaters] = useState<CommsRepeater[]>(defaultCommsRepeaters);
   const [kiwixLibrary, setKiwixLibrary] = useState<KiwixResource[]>([]);
+  const [equipment, setEquipment] = useState<EquipmentItem[]>(seedEquipment);
+  const [threats, setThreats] = useState<Threat[]>([]);
+  const [areaStudy, setAreaStudy] = useState<AreaStudy>(makeEmptyAreaStudy());
 
   const dataQuery = useQuery({
     queryKey: ['appData'],
@@ -136,6 +146,11 @@ export const [AppProvider, useAppData] = createContextHook(() => {
             const missingSupplies = seedSupplies.filter((s) => !existingSupplyIds.has(s.id));
             if (missingSupplies.length > 0) {
               parsed.supplies = [...(parsed.supplies ?? []), ...missingSupplies];
+            }
+            const existingEquipmentIds = new Set((parsed.equipment ?? []).map((e) => e.id));
+            const missingEquipment = seedEquipment.filter((e) => !existingEquipmentIds.has(e.id));
+            if (missingEquipment.length > 0) {
+              parsed.equipment = [...(parsed.equipment ?? []), ...missingEquipment];
             }
             await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
             await AsyncStorage.setItem(DATA_VERSION_KEY, String(CURRENT_DATA_VERSION));
@@ -177,6 +192,9 @@ export const [AppProvider, useAppData] = createContextHook(() => {
       setCommsChannels(dataQuery.data.commsChannels ?? defaultCommsChannels);
       setCommsRepeaters(dataQuery.data.commsRepeaters ?? defaultCommsRepeaters);
       setKiwixLibrary(dataQuery.data.kiwixLibrary ?? []);
+      setEquipment(dataQuery.data.equipment ?? seedEquipment);
+      setThreats(dataQuery.data.threats ?? []);
+      setAreaStudy(dataQuery.data.areaStudy ?? makeEmptyAreaStudy());
     }
   }, [dataQuery.data]);
 
@@ -206,11 +224,14 @@ export const [AppProvider, useAppData] = createContextHook(() => {
         commsChannels,
         commsRepeaters,
         kiwixLibrary,
+        equipment,
+        threats,
+        areaStudy,
         ...overrides,
       };
       saveMutation.mutate(data);
     },
-    [alertLevel, groupName, checkInIntervalHours, remindersEnabled, shakeSosEnabled, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary, saveMutation]
+    [alertLevel, groupName, checkInIntervalHours, remindersEnabled, shakeSosEnabled, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary, equipment, threats, areaStudy, saveMutation]
   );
 
   const updateRemindersEnabled = useCallback(
@@ -582,6 +603,75 @@ export const [AppProvider, useAppData] = createContextHook(() => {
     return JSON.stringify(kiwixLibrary, null, 2);
   }, [kiwixLibrary]);
 
+  const addEquipment = useCallback(
+    (item: EquipmentItem) => {
+      const updated = [...equipment, item];
+      setEquipment(updated);
+      persistData({ equipment: updated });
+    },
+    [equipment, persistData]
+  );
+
+  const updateEquipment = useCallback(
+    (item: EquipmentItem) => {
+      const updated = equipment.map((e) => (e.id === item.id ? item : e));
+      setEquipment(updated);
+      persistData({ equipment: updated });
+    },
+    [equipment, persistData]
+  );
+
+  const removeEquipment = useCallback(
+    (id: string) => {
+      const updated = equipment.filter((e) => e.id !== id);
+      setEquipment(updated);
+      persistData({ equipment: updated });
+    },
+    [equipment, persistData]
+  );
+
+  const addThreat = useCallback(
+    (threat: Threat) => {
+      const updated = [...threats, threat];
+      setThreats(updated);
+      persistData({ threats: updated });
+    },
+    [threats, persistData]
+  );
+
+  const updateThreat = useCallback(
+    (threat: Threat) => {
+      const updated = threats.map((t) => (t.id === threat.id ? threat : t));
+      setThreats(updated);
+      persistData({ threats: updated });
+    },
+    [threats, persistData]
+  );
+
+  const removeThreat = useCallback(
+    (id: string) => {
+      const updated = threats.filter((t) => t.id !== id);
+      setThreats(updated);
+      persistData({ threats: updated });
+    },
+    [threats, persistData]
+  );
+
+  const updateAreaStudySection = useCallback(
+    (sectionId: string, content: string) => {
+      const existing = areaStudy.sections.find((s) => s.id === sectionId);
+      const updated: AreaStudy = {
+        sections: existing
+          ? areaStudy.sections.map((s) => (s.id === sectionId ? { ...s, content } : s))
+          : [...areaStudy.sections, { id: sectionId, content }],
+        updatedAt: new Date().toISOString(),
+      };
+      setAreaStudy(updated);
+      persistData({ areaStudy: updated });
+    },
+    [areaStudy, persistData]
+  );
+
   const currentSnapshot = useCallback((): AppData => ({
     alertLevel,
     groupName,
@@ -596,7 +686,10 @@ export const [AppProvider, useAppData] = createContextHook(() => {
     commsChannels,
     commsRepeaters,
     kiwixLibrary,
-  }), [alertLevel, groupName, checkInIntervalHours, remindersEnabled, shakeSosEnabled, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary]);
+    equipment,
+    threats,
+    areaStudy,
+  }), [alertLevel, groupName, checkInIntervalHours, remindersEnabled, shakeSosEnabled, members, supplies, checklists, pois, routes, commsChannels, commsRepeaters, kiwixLibrary, equipment, threats, areaStudy]);
 
   const exportOpsBackup = useCallback(() => {
     return serializeOpsBackup(currentSnapshot());
@@ -616,6 +709,9 @@ export const [AppProvider, useAppData] = createContextHook(() => {
       setCommsChannels(incoming.commsChannels);
       setCommsRepeaters(incoming.commsRepeaters);
       setKiwixLibrary(incoming.kiwixLibrary);
+      setEquipment(incoming.equipment ?? []);
+      setThreats(incoming.threats ?? []);
+      setAreaStudy(incoming.areaStudy ?? makeEmptyAreaStudy());
       saveMutation.mutate(incoming);
     },
     [saveMutation]
@@ -705,6 +801,16 @@ export const [AppProvider, useAppData] = createContextHook(() => {
     supplyStats,
     checklistStats,
     kiwixLibrary,
+    equipment,
+    addEquipment,
+    updateEquipment,
+    removeEquipment,
+    threats,
+    addThreat,
+    updateThreat,
+    removeThreat,
+    areaStudy,
+    updateAreaStudySection,
     saveKiwixResource,
     updateKiwixResource,
     removeKiwixResource,

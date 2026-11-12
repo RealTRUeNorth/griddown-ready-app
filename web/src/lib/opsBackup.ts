@@ -1,4 +1,5 @@
 import { AppData, AlertLevel } from '@/lib/types';
+import { makeEmptyAreaStudy } from '@/lib/data/areaStudy';
 
 export const OPS_BACKUP_FORMAT = 'griddown-ops-backup';
 export const OPS_BACKUP_VERSION = 1;
@@ -64,6 +65,9 @@ export function parseOpsBackup(raw: string): AppData | null {
       commsChannels: asArray(source.commsChannels),
       commsRepeaters: asArray(source.commsRepeaters),
       kiwixLibrary: asArray(source.kiwixLibrary),
+      equipment: asArray(source.equipment),
+      threats: asArray(source.threats),
+      areaStudy: source.areaStudy ?? makeEmptyAreaStudy(),
     };
   } catch {
     return null;
@@ -78,6 +82,9 @@ export function backupCounts(data: AppData): {
   routes: number;
   channels: number;
   repeaters: number;
+  equipment: number;
+  threats: number;
+  areaStudySections: number;
 } {
   return {
     members: data.members.length,
@@ -87,5 +94,8 @@ export function backupCounts(data: AppData): {
     routes: data.routes.length,
     channels: data.commsChannels.length,
     repeaters: data.commsRepeaters.length,
+    equipment: data.equipment?.length ?? 0,
+    threats: data.threats?.length ?? 0,
+    areaStudySections: data.areaStudy?.sections?.filter((s) => s.content.trim()).length ?? 0,
   };
 }

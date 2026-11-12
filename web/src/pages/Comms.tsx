@@ -13,7 +13,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppData } from '@/lib/store';
+import { useNavigate } from 'react-router-dom';
 import { CommsBand, CommsChannel, CommsMode, CommsRepeater } from '@/lib/types';
+import { REPORT_DEFS } from '@/lib/radioReports';
 import { defaultCommsProtocols, BAND_INFO } from '@/lib/data/comms';
 import { TCard, SectionTitle, Chip } from '@/components/tactical';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -38,6 +40,7 @@ export default function Comms() {
     removeCommsRepeater,
   } = useAppData();
 
+  const navigate = useNavigate();
   const [channelDialog, setChannelDialog] = useState(false);
   const [repeaterDialog, setRepeaterDialog] = useState(false);
   const [protocolsOpen, setProtocolsOpen] = useState(false);
@@ -177,6 +180,20 @@ export default function Comms() {
                 </li>
               ))}
             </ol>
+          </TCard>
+        ))}
+      </div>
+
+      <SectionTitle>STANDARD REPORTS</SectionTitle>
+      <div className="space-y-2">
+        {REPORT_DEFS.map((r) => (
+          <TCard key={r.id} onClick={() => navigate('/report-builder')} className="p-4 flex items-center gap-3">
+            <Radio className="w-5 h-5 text-[#E8A04A] shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-bold text-[#E8E4DC]">{r.name}</div>
+              <div className="text-[11px] text-[#6A6860] mt-0.5 line-clamp-1">{r.description}</div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-[#6A6860] shrink-0" />
           </TCard>
         ))}
       </div>

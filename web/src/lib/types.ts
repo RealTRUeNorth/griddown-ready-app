@@ -33,6 +33,56 @@ export interface SupplyItem {
 
 export type SupplyCategory = 'water' | 'food' | 'medical' | 'tools' | 'comms' | 'shelter' | 'clothing' | 'documents' | 'other';
 
+/** Serial-tracked gear and weapons — the armory-style inventory. */
+export type EquipmentCategory = 'firearms' | 'ammunition' | 'optics' | 'medical' | 'comms' | 'tools' | 'protective' | 'navigation' | 'other';
+
+export type EquipmentCondition = 'new' | 'good' | 'fair' | 'poor';
+
+export interface EquipmentItem {
+  id: string;
+  name: string;
+  category: EquipmentCategory;
+  quantity: number;
+  serial?: string;
+  condition: EquipmentCondition;
+  assignedTo?: string;
+  location?: string;
+  notes?: string;
+  /** True for first-launch sample inventory — flagged in the UI so demo records stay distinguishable from real data. */
+  isSample?: boolean;
+}
+
+/** Local hazard or threat being tracked, triaged by likelihood × impact. */
+export type ThreatCategory = 'natural' | 'infrastructure' | 'civil' | 'health' | 'security' | 'other';
+
+export type ThreatLevel = 'low' | 'medium' | 'high';
+
+export type ThreatStatus = 'monitoring' | 'active' | 'mitigated';
+
+export interface Threat {
+  id: string;
+  name: string;
+  category: ThreatCategory;
+  likelihood: ThreatLevel;
+  impact: ThreatLevel;
+  status: ThreatStatus;
+  notes?: string;
+  coordinates?: Coordinates;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AreaStudySectionData {
+  id: string;
+  content: string;
+}
+
+/** Guided area study workbook — user answers, keyed by section id. */
+export interface AreaStudy {
+  sections: AreaStudySectionData[];
+  updatedAt?: string;
+}
+
 export interface ChecklistItem {
   id: string;
   text: string;
@@ -74,12 +124,20 @@ export interface POI {
   createdAt: string;
 }
 
+export interface PacePlan {
+  primary?: string;
+  alternate?: string;
+  contingency?: string;
+  emergency?: string;
+}
+
 export interface Route {
   id: string;
   name: string;
   color: string;
   waypoints: Coordinates[];
   notes?: string;
+  pace?: PacePlan;
   createdAt: string;
 }
 
@@ -190,4 +248,7 @@ export interface AppData {
   commsChannels: CommsChannel[];
   commsRepeaters: CommsRepeater[];
   kiwixLibrary: KiwixResource[];
+  equipment: EquipmentItem[];
+  threats: Threat[];
+  areaStudy: AreaStudy;
 }

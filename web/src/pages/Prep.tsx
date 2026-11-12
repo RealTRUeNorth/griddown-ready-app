@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   CheckSquare,
   Package,
+  PackageSearch,
   Cloud,
   ChevronRight,
   Pencil,
@@ -46,6 +47,13 @@ export default function Prep() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-lg gd-label text-[#E8E4DC]">PREP</h1>
+        <div className="flex gap-2">
+          <button
+            onClick={() => navigate('/prep/equipment')}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#242824] border border-[#3A3F3A] text-[10px] gd-label text-[#9A9890] hover:text-[#E8A04A] transition-colors"
+          >
+            <PackageSearch className="w-3.5 h-3.5" /> ARMORY
+          </button>
         <button
           onClick={() => navigate('/prep/weather')}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#242824] border border-[#3A3F3A] text-[10px] gd-label text-[#9A9890] hover:text-[#E8A04A] transition-colors"
@@ -53,6 +61,7 @@ export default function Prep() {
         >
           <Cloud className="w-3.5 h-3.5" /> WEATHER
         </button>
+        </div>
       </div>
       <div className="flex gap-1.5 mb-4 bg-[#242824] border border-[#3A3F3A] rounded-xl p-1">
         {(['supplies', 'checklists'] as Tab[]).map((t) => (

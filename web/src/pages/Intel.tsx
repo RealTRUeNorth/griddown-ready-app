@@ -5,6 +5,8 @@ import {
   Library,
   Users,
   DatabaseBackup,
+  Map,
+  TriangleAlert,
   Plus,
   Search,
   ChevronRight,
@@ -21,6 +23,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppData } from '@/lib/store';
+import { areaStudyProgress } from '@/lib/data/areaStudy';
 import { defaultGuides } from '@/lib/data/guides';
 import { kiwixCatalog, kiwixCategories } from '@/lib/data/kiwix';
 import {
@@ -37,7 +40,7 @@ import { Button } from '@/components/ui/button';
 import { Field } from '@/pages/Prep';
 import { cn } from '@/lib/utils';
 
-type Tab = 'guides' | 'library' | 'group' | 'backup';
+type Tab = 'guides' | 'analysis' | 'library' | 'group' | 'backup';
 
 const GUIDE_ICON_COLORS = ['#8B9A6A', '#F44336', '#4CAF50', '#D4822A', '#FFC107', '#42A5F5'];
 
@@ -48,6 +51,7 @@ export default function Intel() {
 
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
     { key: 'guides', label: 'GUIDES', icon: BookOpen },
+    { key: 'analysis', label: 'ANALYSIS', icon: Map },
     { key: 'library', label: 'LIBRARY', icon: Library },
     { key: 'group', label: 'GROUP', icon: Users },
     { key: 'backup', label: 'BACKUP', icon: DatabaseBackup },
@@ -56,7 +60,7 @@ export default function Intel() {
   return (
     <div>
       <h1 className="text-lg gd-label text-[#E8E4DC] mb-4">INTEL</h1>
-      <div className="grid grid-cols-4 gap-1.5 bg-[#242824] border border-[#3A3F3A] rounded-xl p-1 mb-4">
+      <div className="grid grid-cols-5 gap-1 bg-[#242824] border border-[#3A3F3A] rounded-xl p-1 mb-4">
         {tabs.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -72,9 +76,53 @@ export default function Intel() {
         ))}
       </div>
       {tab === 'guides' && <GuidesTab />}
+      {tab === 'analysis' && <AnalysisTab />}
       {tab === 'library' && <LibraryTab />}
       {tab === 'group' && <GroupTab />}
       {tab === 'backup' && <BackupTab />}
+    </div>
+  );
+}
+
+/* ── Analysis: area study + threat register ───────────────── */
+
+function AnalysisTab() {
+  const navigate = useNavigate();
+  const { areaStudy, threats } = useAppData();
+  const filled = areaStudyProgress(areaStudy).filled;
+  const activeThreats = threats.filter((t) => t.status === 'active').length;
+
+  return (
+    <div className="space-y-2">
+      <TCard onClick={() => navigate('/area-study')} className="p-4 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-[#8B9A6A]/15">
+          <Map className="w-5 h-5 text-[#8B9A6A]" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-bold text-[#E8E4DC]">Area Study Workbook</div>
+          <div className="text-[11px] text-[#6A6860] mt-0.5">Terrain, people, routes, resources & the group plan</div>
+          <div className="mt-1.5">
+            <Chip label={`${filled}/8 SECTIONS`} color={filled === 8 ? '#4CAF50' : '#FFC107'} />
+          </div>
+        </div>
+        <ChevronRight className="w-4 h-4 text-[#6A6860] shrink-0" />
+      </TCard>
+
+      <TCard onClick={() => navigate('/threats')} className="p-4 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-[#F44336]/15">
+          <TriangleAlert className="w-5 h-5 text-[#E85555]" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-bold text-[#E8E4DC]">Threat Register</div>
+          <div className="text-[11px] text-[#6A6860] mt-0.5">Tracked hazards with severity, mitigations & alerts</div>
+          {activeThreats > 0 && (
+            <div className="mt-1.5">
+              <Chip label={`${activeThreats} ACTIVE`} color="#F44336" />
+            </div>
+          )}
+        </div>
+        <ChevronRight className="w-4 h-4 text-[#6A6860] shrink-0" />
+      </TCard>
     </div>
   );
 }

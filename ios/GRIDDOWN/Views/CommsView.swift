@@ -17,7 +17,7 @@ struct CommsView: View {
     @State private var showingSmsNoNumbers = false
 
     enum CommsTab: String, CaseIterable {
-        case channels, repeaters, protocols, reference
+        case channels, repeaters, protocols, reports, reference
         var label: String { rawValue.capitalized }
     }
 
@@ -30,6 +30,7 @@ struct CommsView: View {
                     case .channels: channelsTab
                     case .repeaters: repeatersTab
                     case .protocols: protocolsTab
+                    case .reports: reportsTab
                     case .reference: referenceTab
                     }
                 }
@@ -395,6 +396,43 @@ struct CommsView: View {
         .background(Theme.bgCard)
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
         .clipShape(.rect(cornerRadius: 12))
+    }
+
+    /// Standard report builders (SALUTE / STATREP / 9-LINE).
+    private var reportsTab: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionLabel(text: "STANDARD REPORTS")
+            ForEach(RadioReports.defs) { report in
+                NavigationLink(value: NavRoute.reportBuilder) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "dot.radiowaves.left.and.right")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(Theme.orangeLight)
+                            .frame(width: 38, height: 38)
+                            .background(Theme.orangeMuted)
+                            .clipShape(.rect(cornerRadius: 8))
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(report.name)
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(Theme.textPrimary)
+                            Text(report.description)
+                                .font(.system(size: 12))
+                                .foregroundStyle(Theme.textSecondary)
+                                .lineLimit(2)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(Theme.textMuted)
+                    }
+                    .padding(14)
+                    .background(Theme.bgCard)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+                    .clipShape(.rect(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 
     private var referenceTab: some View {

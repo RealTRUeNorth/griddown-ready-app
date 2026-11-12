@@ -1,4 +1,4 @@
-import { SupplyItem } from '@/types';
+import { SupplyItem, EquipmentItem } from '@/types';
 
 /**
  * Seed inventory — deliberately includes one expired item and one expiring
@@ -150,6 +150,61 @@ export const seedSupplies: SupplyItem[] = [
     unit: 'units',
     minimumQuantity: 2,
     notes: 'With grommets + bungee assortment',
+    isSample: true,
+  },
+];
+
+/** Seed armory / serialized gear — marked as sample so users can spot demo records. */
+export const seedEquipment: EquipmentItem[] = [
+  {
+    id: 'e_fire_1',
+    name: 'Ruger 10/22',
+    category: 'firearms',
+    quantity: 1,
+    serial: 'RGR-8231-44',
+    condition: 'good',
+    assignedTo: 'Dad',
+    location: 'Safe — primary',
+    notes: 'Zeroed at 50 yd, 4× scope',
+    isSample: true,
+  },
+  {
+    id: 'e_amm_1',
+    name: '.22LR Match',
+    category: 'ammunition',
+    quantity: 1500,
+    condition: 'new',
+    location: 'Safe — lower drawer',
+    notes: 'Rotate range use; store dry',
+    isSample: true,
+  },
+  {
+    id: 'e_prot_1',
+    name: 'N95 Respirators',
+    category: 'protective',
+    quantity: 40,
+    condition: 'good',
+    notes: 'Sealed bags, 10 per go-bag',
+    isSample: true,
+  },
+  {
+    id: 'e_nav_1',
+    name: 'Compass — Silva Explorer',
+    category: 'navigation',
+    quantity: 2,
+    condition: 'good',
+    assignedTo: 'Dad / Teen',
+    notes: 'Paired with paper area map',
+    isSample: true,
+  },
+  {
+    id: 'e_med_1',
+    name: 'CAT Tourniquets',
+    category: 'medical',
+    quantity: 4,
+    condition: 'new',
+    location: 'Trauma kit + vehicles',
+    notes: 'One per kit — check dates yearly',
     isSample: true,
   },
 ];

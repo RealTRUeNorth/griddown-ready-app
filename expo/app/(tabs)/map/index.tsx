@@ -1103,6 +1103,22 @@ export default function MapScreen() {
           {selectedRoute.notes ? (
             <Text style={styles.infoCardNotes}>{selectedRoute.notes}</Text>
           ) : null}
+          {selectedRoute.pace &&
+            (['primary', 'alternate', 'contingency', 'emergency'] as const).some(
+              (k) => selectedRoute.pace?.[k]?.trim()
+            ) && (
+              <View style={styles.paceCard}>
+                <Text style={styles.paceCardTitle}>PACE PLAN</Text>
+                {(['primary', 'alternate', 'contingency', 'emergency'] as const).map((k) =>
+                  selectedRoute.pace?.[k]?.trim() ? (
+                    <View key={k} style={styles.paceRow}>
+                      <Text style={styles.paceKey}>{k.charAt(0).toUpperCase()}</Text>
+                      <Text style={styles.paceValue}>{selectedRoute.pace[k]}</Text>
+                    </View>
+                  ) : null
+                )}
+              </View>
+            )}
           {selectedRoute.waypoints.length > 0 && (
             <TouchableOpacity
               style={styles.navigateBtn}
@@ -1448,6 +1464,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 8,
     lineHeight: 17,
+  },
+  paceCard: {
+    backgroundColor: Colors.bgElevated,
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 8,
+  },
+  paceCardTitle: {
+    color: Colors.orangeLight,
+    fontSize: 9,
+    fontWeight: '800' as const,
+    letterSpacing: 2,
+    marginBottom: 6,
+  },
+  paceRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 4,
+  },
+  paceKey: {
+    color: Colors.white,
+    fontSize: 11,
+    fontWeight: '800' as const,
+    width: 14,
+  },
+  paceValue: {
+    flex: 1,
+    color: Colors.textSecondary,
+    fontSize: 11,
+    lineHeight: 15,
   },
   infoCardCoords: {
     color: Colors.textMuted,

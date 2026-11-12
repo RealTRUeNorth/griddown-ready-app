@@ -41,6 +41,16 @@ struct PrepView: View {
                     )
                 }
                 .buttonStyle(.plain)
+
+                NavigationLink(value: NavRoute.equipment) {
+                    NavCard(
+                        icon: "shippingbox", iconColor: Theme.orangeLight,
+                        iconBg: Theme.orangeMuted,
+                        title: "Equipment & Armory",
+                        description: "Serialized gear, weapons & accountable kit tracking"
+                    )
+                }
+                .buttonStyle(.plain)
             }
             .padding(16)
             .padding(.bottom, 40)

@@ -17,6 +17,9 @@ final class AppStore {
     var commsChannels: [CommsChannel] = MockData.commsChannels
     var commsRepeaters: [CommsRepeater] = MockData.commsRepeaters
     var kiwixLibrary: [KiwixResource] = []
+    var equipment: [EquipmentItem] = MockData.seedEquipment
+    var threats: [Threat] = []
+    var areaStudy = AreaStudy()
 
     private let storageKey = "griddown_app_data"
     private let versionKey = "griddown_data_version"
@@ -24,7 +27,7 @@ final class AppStore {
     /// Written by the interactive widget / Live Activity intent; consumed on
     /// app activation because extension processes can't touch this store.
     private let pendingAlertKey = "griddown_pending_alert_level"
-    private let currentDataVersion = 4
+    private let currentDataVersion = 5
     private var loadedFromStorage = false
 
     init() {
@@ -56,6 +59,9 @@ final class AppStore {
         commsChannels = decoded.commsChannels.isEmpty ? MockData.commsChannels : decoded.commsChannels
         commsRepeaters = decoded.commsRepeaters.isEmpty ? MockData.commsRepeaters : decoded.commsRepeaters
         kiwixLibrary = decoded.kiwixLibrary
+        equipment = decoded.equipment.isEmpty ? MockData.seedEquipment : decoded.equipment
+        threats = decoded.threats
+        areaStudy = decoded.areaStudy
 
         // Merge new seed POIs/routes into existing saved data on version bump
         let savedVersion = UserDefaults.standard.integer(forKey: versionKey)
@@ -84,6 +90,12 @@ final class AppStore {
             let missingSupplies = MockData.seedSupplies.filter { !existingSupplyIds.contains($0.id) }
             if !missingSupplies.isEmpty {
                 supplies.append(contentsOf: missingSupplies)
+            }
+            // v5: seed armory / equipment and workbook for existing users
+            let existingEquipmentIds = Set(equipment.map { $0.id })
+            let missingEquipment = MockData.seedEquipment.filter { !existingEquipmentIds.contains($0.id) }
+            if !missingEquipment.isEmpty {
+                equipment.append(contentsOf: missingEquipment)
             }
             UserDefaults.standard.set(currentDataVersion, forKey: versionKey)
             persist()
@@ -116,7 +128,8 @@ final class AppStore {
             members: members,
             supplies: supplies, checklists: checklists, pois: pois, routes: routes,
             commsChannels: commsChannels, commsRepeaters: commsRepeaters,
-            kiwixLibrary: kiwixLibrary
+            kiwixLibrary: kiwixLibrary,
+            equipment: equipment, threats: threats, areaStudy: areaStudy
         )
         if let encoded = try? JSONEncoder().encode(data) {
             UserDefaults.standard.set(encoded, forKey: storageKey)
@@ -298,6 +311,36 @@ final class AppStore {
     }
     func removeCommsChannel(_ id: String) { commsChannels.removeAll { $0.id == id }; persist() }
 
+    // MARK: - Equipment / Threats / Area Study
+
+    func addEquipment(_ item: EquipmentItem) { equipment.append(item); persist() }
+    func updateEquipment(_ item: EquipmentItem) {
+        if let idx = equipment.firstIndex(where: { $0.id == item.id }) { equipment[idx] = item; persist() }
+    }
+    func removeEquipment(_ id: String) { equipment.removeAll { $0.id == id }; persist() }
+
+    func addThreat(_ threat: Threat) { threats.append(threat); persist() }
+    func updateThreat(_ threat: Threat) {
+        if let idx = threats.firstIndex(where: { $0.id == threat.id }) { threats[idx] = threat; persist() }
+    }
+    func removeThreat(_ id: String) { threats.removeAll { $0.id == id }; persist() }
+
+    func updateAreaStudySection(id: String, content: String) {
+        if let idx = areaStudy.sections.firstIndex(where: { $0.id == id }) {
+            areaStudy.sections[idx].content = content
+        } else {
+            areaStudy.sections.append(AreaStudySectionData(id: id, content: content))
+        }
+        areaStudy.updatedAt = ISO8601DateFormatter().string(from: Date())
+        persist()
+    }
+
+    var areaStudyProgress: (filled: Int, total: Int, percent: Int) {
+        let filled = MockData.areaStudyTemplate.filter { !$0.id.isEmpty && !areaStudy.content(for: $0.id).trimmingCharacters(in: .whitespaces).isEmpty }.count
+        let total = MockData.areaStudyTemplate.count
+        return (filled, total, total > 0 ? Int((Double(filled) / Double(total)) * 100) : 0)
+    }
+
     func addCommsRepeater(_ repeater: CommsRepeater) { commsRepeaters.append(repeater); persist() }
     func updateCommsRepeater(_ repeater: CommsRepeater) {
         if let idx = commsRepeaters.firstIndex(where: { $0.id == repeater.id }) { commsRepeaters[idx] = repeater; persist() }
@@ -320,7 +363,7 @@ final class AppStore {
     static let opsBackupVersion = 1
 
     var opsCountsSummary: String {
-        "\(members.count) members · \(supplies.count) supplies · \(pois.count) POIs · \(routes.count) routes · \(commsChannels.count) channels · \(commsRepeaters.count) repeaters"
+        "\(members.count) members · \(supplies.count) supplies · \(equipment.count) equipment · \(threats.count) threats · \(pois.count) POIs · \(routes.count) routes · \(commsChannels.count) channels · \(commsRepeaters.count) repeaters"
     }
 
     /// Serializes the entire ops kit as a pretty-printed JSON string.
@@ -335,7 +378,8 @@ final class AppStore {
                 members: members,
                 supplies: supplies, checklists: checklists, pois: pois, routes: routes,
                 commsChannels: commsChannels, commsRepeaters: commsRepeaters,
-                kiwixLibrary: kiwixLibrary
+                kiwixLibrary: kiwixLibrary,
+                equipment: equipment, threats: threats, areaStudy: areaStudy
             )
         )
         let encoder = JSONEncoder()
@@ -353,7 +397,9 @@ final class AppStore {
         let r = payload.routes?.count ?? 0
         let c = payload.commsChannels?.count ?? 0
         let rp = payload.commsRepeaters?.count ?? 0
-        return "\(m) members · \(s) supplies · \(p) POIs · \(r) routes · \(c) channels · \(rp) repeaters"
+        let eq = payload.equipment?.count ?? 0
+        let th = payload.threats?.count ?? 0
+        return "\(m) members · \(s) supplies · \(eq) equipment · \(th) threats · \(p) POIs · \(r) routes · \(c) channels · \(rp) repeaters"
     }
 
     /// Replaces all app data with the parsed backup. Returns false if invalid.
@@ -373,6 +419,9 @@ final class AppStore {
         commsChannels = payload.commsChannels ?? []
         commsRepeaters = payload.commsRepeaters ?? []
         kiwixLibrary = payload.kiwixLibrary ?? []
+        equipment = payload.equipment ?? []
+        threats = payload.threats ?? []
+        areaStudy = payload.areaStudy ?? AreaStudy()
         persist()
         return true
     }

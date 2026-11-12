@@ -127,6 +127,26 @@ function RootLayoutNav() {
         name="lantern"
         options={{ title: "Lantern" }}
       />
+      <Stack.Screen
+        name="report-builder"
+        options={{ title: "Report Builder" }}
+      />
+      <Stack.Screen
+        name="area-study"
+        options={{ title: "Area Study" }}
+      />
+      <Stack.Screen
+        name="threats"
+        options={{ title: "Threat Register" }}
+      />
+      <Stack.Screen
+        name="add-threat"
+        options={{ presentation: "modal", title: "Add Threat" }}
+      />
+      <Stack.Screen
+        name="add-equipment"
+        options={{ presentation: "modal", title: "Add Equipment" }}
+      />
     </Stack>
   );
 }

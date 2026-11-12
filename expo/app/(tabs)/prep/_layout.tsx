@@ -16,6 +16,7 @@ export default function PrepLayout() {
       <Stack.Screen name="weather" options={{ title: "WEATHER" }} />
       <Stack.Screen name="supplies" options={{ title: "SUPPLIES" }} />
       <Stack.Screen name="checklists" options={{ title: "CHECKLISTS" }} />
+      <Stack.Screen name="equipment" options={{ title: "EQUIPMENT" }} />
     </Stack>
   );
 }

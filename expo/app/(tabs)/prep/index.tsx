@@ -14,6 +14,7 @@ import {
   CheckSquare,
   ChevronRight,
   AlertTriangle,
+  PackageSearch,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -78,7 +79,7 @@ function NavCard({
 }
 
 export default function PrepHubScreen() {
-  const { supplies, checklistStats, supplyStats } = useAppData();
+  const { supplies, checklistStats, supplyStats, equipment } = useAppData();
 
   const totalChecked = checklistStats.reduce((sum, s) => sum + s.completed, 0);
   const totalItems = checklistStats.reduce((sum, s) => sum + s.total, 0);
@@ -112,6 +113,14 @@ export default function PrepHubScreen() {
           ) : null
         }
         onPress={() => router.push('/prep/supplies' as Href)}
+      />
+
+      <NavCard
+        icon={<PackageSearch color={Colors.amberLight} size={24} />}
+        iconBg="rgba(232, 192, 74, 0.15)"
+        title="Equipment & Armory"
+        description={`${equipment.length} serialized item${equipment.length !== 1 ? 's' : ''} — weapons, gear, accountability`}
+        onPress={() => router.push('/prep/equipment' as Href)}
       />
 
       <NavCard

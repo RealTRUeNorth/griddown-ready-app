@@ -18,6 +18,7 @@ struct MapView: View {
     @State private var showLayers = false
     @State private var showingAddPoi = false
     @State private var showingAddRoute = false
+    @State private var selectedRouteId: String?
     @State private var weather: WeatherData?
     @State private var userLocation: Coordinates?
     @State private var weatherSuggestions: [WeatherSuggestion] = []
@@ -205,6 +206,9 @@ struct MapView: View {
             VStack(spacing: 0) {
                 searchBar
                 compassChip
+                if showRoutes && !store.routes.isEmpty && searchQuery.isEmpty {
+                    routeChipStrip
+                }
                 if !searchQuery.isEmpty {
                     searchResultsList
                 } else {
@@ -218,6 +222,11 @@ struct MapView: View {
 
             if let poi = selectedPoi {
                 poiDetailSheet(poi)
+                    .transition(.move(edge: .bottom))
+            }
+
+            if selectedPoi == nil, let route = selectedRoute {
+                routeDetailCard(route)
                     .transition(.move(edge: .bottom))
             }
         }
@@ -992,6 +1001,127 @@ struct MapView: View {
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 1))
         .clipShape(.rect(cornerRadius: 14))
         .padding(16)
+    }
+
+    private var selectedRoute: Route? {
+        guard let id = selectedRouteId else { return nil }
+        return store.routes.first(where: { $0.id == id })
+    }
+
+    /// Horizontal chips for each saved route; tap to inspect its PACE plan.
+    private var routeChipStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(store.routes) { route in
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            if selectedRouteId == route.id {
+                                selectedRouteId = nil
+                            } else {
+                                selectedRouteId = route.id
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Circle()
+                                .fill(Color(hexString: route.color) ?? Theme.orange)
+                                .frame(width: 7, height: 7)
+                            Text(route.name)
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(Theme.textPrimary)
+                                .lineLimit(1)
+                            if route.pace?.hasContent == true {
+                                Text("PACE")
+                                    .font(.system(size: 8, weight: .heavy))
+                                    .tracking(0.5)
+                                    .foregroundStyle(Theme.orangeLight)
+                            }
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(selectedRouteId == route.id ? Theme.bgElevated : Theme.bgCard)
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(selectedRouteId == route.id ? Theme.orange : Theme.border, lineWidth: 1))
+                        .clipShape(.rect(cornerRadius: 14))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 4)
+            .padding(.vertical, 4)
+        }
+    }
+
+    /// Detail card for a selected route — notes and its PACE movement plan.
+    private func routeDetailCard(_ route: Route) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: "route")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 40, height: 40)
+                    .background(Color(hexString: route.color) ?? Theme.orange)
+                    .clipShape(.rect(cornerRadius: 10))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(route.name)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(Theme.textPrimary)
+                    Text("\(route.waypoints.count) waypoint\(route.waypoints.count == 1 ? "" : "s")")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                Spacer()
+                Button {
+                    withAnimation { selectedRouteId = nil }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(Theme.textMuted)
+                        .frame(width: 30, height: 30)
+                }
+            }
+            if let notes = route.notes, !notes.isEmpty {
+                Text(notes)
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+            if let pace = route.pace, pace.hasContent {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("PACE PLAN")
+                        .font(.system(size: 9, weight: .heavy))
+                        .tracking(1.5)
+                        .foregroundStyle(Theme.orangeLight)
+                    paceRow("P — Primary", pace.primary)
+                    paceRow("A — Alternate", pace.alternate)
+                    paceRow("C — Contingency", pace.contingency)
+                    paceRow("E — Emergency", pace.emergency)
+                }
+                .padding(10)
+                .background(Theme.bgElevated)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.borderLight, lineWidth: 1))
+                .clipShape(.rect(cornerRadius: 8))
+            }
+        }
+        .padding(16)
+        .background(Theme.bgCard)
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 1))
+        .clipShape(.rect(cornerRadius: 14))
+        .padding(16)
+    }
+
+    @ViewBuilder
+    private func paceRow(_ label: String, _ value: String?) -> some View {
+        if let value, !value.isEmpty {
+            HStack(alignment: .top, spacing: 8) {
+                Text(label)
+                    .font(.system(size: 10, weight: .heavy))
+                    .foregroundStyle(Theme.orangeLight)
+                    .frame(width: 96, alignment: .leading)
+                Text(value)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.textPrimary)
+            }
+        }
     }
 }
 

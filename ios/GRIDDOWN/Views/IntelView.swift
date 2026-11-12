@@ -13,6 +13,18 @@ struct IntelView: View {
     @State private var showingShareSheet = false
     @State private var showingFileImporter = false
 
+    private var readyCount: Int {
+        store.members.filter { $0.status == .ready }.count
+    }
+
+    private var activeThreatCount: Int {
+        store.threats.filter { $0.status == .active }.count
+    }
+
+    private var areaStudyFilled: Int {
+        store.areaStudyProgress.filled
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
@@ -24,8 +36,8 @@ struct IntelView: View {
                         iconBg: Theme.oliveMuted,
                         title: "Group Roster",
                         description: "\(store.members.count) member\(store.members.count != 1 ? "s" : "") registered",
-                        badge: "\(store.members.filter { $0.status == .ready }.count) READY",
-                        badgeColor: store.members.allSatisfy { $0.status == .ready } ? Theme.statusGreen : Theme.statusAmber
+                        badge: "\(readyCount) READY",
+                        badgeColor: readyCount == store.members.count ? Theme.statusGreen : Theme.statusAmber
                     )
                 }
                 .buttonStyle(.plain)
@@ -50,6 +62,32 @@ struct IntelView: View {
                         description: "Offline reference cards for emergency scenarios",
                         badge: "\(MockData.guides.count)",
                         badgeColor: Theme.olive
+                    )
+                }
+                .buttonStyle(.plain)
+
+                SectionLabel(text: "INTELLIGENCE & ANALYSIS")
+
+                NavigationLink(value: NavRoute.areaStudy) {
+                    NavCard(
+                        icon: "map.fill", iconColor: Theme.oliveLight,
+                        iconBg: Theme.oliveMuted,
+                        title: "Area Study Workbook",
+                        description: "Systematic area assessment: terrain, routes, resources & the plan",
+                        badge: "\(areaStudyFilled)/8",
+                        badgeColor: areaStudyFilled == 8 ? Theme.statusGreen : Theme.statusAmber
+                    )
+                }
+                .buttonStyle(.plain)
+
+                NavigationLink(value: NavRoute.threats) {
+                    NavCard(
+                        icon: "exclamationmark.triangle.fill", iconColor: Theme.redLight,
+                        iconBg: Theme.redMuted,
+                        title: "Threat Register",
+                        description: "Tracked hazards with severity, mitigations & alerts",
+                        badge: activeThreatCount > 0 ? "\(activeThreatCount) ACTIVE" : nil,
+                        badgeColor: Theme.statusRed
                     )
                 }
                 .buttonStyle(.plain)

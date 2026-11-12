@@ -28,18 +28,20 @@ import {
   Hash,
   Trash2,
   MessageSquareText,
+  FileText,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
 import { openSms } from '@/utils/sms';
 import { CommsChannel, CommsRepeater } from '@/types';
+import { REPORT_DEFS } from '@/utils/radioReports';
 import {
   BAND_INFO,
   defaultCommsProtocols,
 } from '@/mocks/comms';
 
-type TabId = 'channels' | 'repeaters' | 'protocols' | 'reference';
+type TabId = 'channels' | 'repeaters' | 'protocols' | 'reference' | 'reports';
 
 export default function CommsScreen() {
   const {
@@ -161,6 +163,7 @@ export default function CommsScreen() {
           { id: 'repeaters' as TabId, label: 'REPEATERS', icon: Repeat },
           { id: 'protocols' as TabId, label: 'PROTOCOLS', icon: BookOpen },
           { id: 'reference' as TabId, label: 'REFERENCE', icon: Signal },
+          { id: 'reports' as TabId, label: 'REPORTS', icon: FileText },
         ]).map((tab) => (
           <TouchableOpacity
             key={tab.id}
@@ -445,6 +448,39 @@ export default function CommsScreen() {
               </Text>
             </View>
           </View>
+        </View>
+      )}
+
+      {activeTab === 'reports' && (
+        <View>
+          <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>
+            STANDARD REPORTS
+          </Text>
+          {REPORT_DEFS.map((report) => (
+            <TouchableOpacity
+              key={report.id}
+              style={styles.protoCard}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                router.push('/report-builder' as Href);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.protoHeader}>
+                <View style={styles.protoIconWrap}>
+                  <FileText color={Colors.orangeLight} size={16} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.protoTitle}>{report.name}</Text>
+                  <Text style={styles.protoDesc}>{report.description}</Text>
+                </View>
+                <ChevronRight color={Colors.textMuted} size={16} />
+              </View>
+            </TouchableOpacity>
+          ))}
+          <Text style={styles.reportsHint}>
+            Fill the lines, then copy, share, or send by SMS. Sending over your primary radio? Read the preview line by line.
+          </Text>
         </View>
       )}
 
@@ -1085,6 +1121,14 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: Colors.border,
     marginVertical: 14,
+  },
+  reportsHint: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 4,
+    textAlign: 'center' as const,
+    paddingHorizontal: 12,
   },
   footer: {
     alignItems: 'center',

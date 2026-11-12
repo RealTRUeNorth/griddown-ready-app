@@ -16,7 +16,14 @@ import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppData } from '@/providers/AppProvider';
 import { ROUTE_COLORS } from '@/constants/mapHelpers';
-import { Coordinates } from '@/types';
+import { Coordinates, PacePlan } from '@/types';
+
+const PACE_FIELDS: { key: keyof PacePlan; label: string; hint: string }[] = [
+  { key: 'primary', label: 'P — PRIMARY', hint: 'Your intended route' },
+  { key: 'alternate', label: 'A — ALTERNATE', hint: 'Different roads, same destination' },
+  { key: 'contingency', label: 'C — CONTINGENCY', hint: 'Where you go if the destination is unreachable' },
+  { key: 'emergency', label: 'E — EMERGENCY', hint: 'Last-resort rally point or shelter' },
+];
 
 export default function AddRouteScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -27,6 +34,7 @@ export default function AddRouteScreen() {
   const [name, setName] = useState<string>(existing?.name ?? '');
   const [color, setColor] = useState<string>(existing?.color ?? ROUTE_COLORS[0]);
   const [notes, setNotes] = useState<string>(existing?.notes ?? '');
+  const [pace, setPace] = useState<PacePlan>(existing?.pace ?? {});
   const [waypoints, setWaypoints] = useState<Coordinates[]>(existing?.waypoints ?? []);
   const [latInput, setLatInput] = useState<string>('');
   const [lngInput, setLngInput] = useState<string>('');
@@ -61,6 +69,12 @@ export default function AddRouteScreen() {
       color,
       waypoints,
       notes: notes.trim() || undefined,
+      pace: Object.values(pace).some((v) => v && v.trim()) ? {
+        primary: pace.primary?.trim() || undefined,
+        alternate: pace.alternate?.trim() || undefined,
+        contingency: pace.contingency?.trim() || undefined,
+        emergency: pace.emergency?.trim() || undefined,
+      } : undefined,
       createdAt: existing?.createdAt ?? new Date().toISOString(),
     };
     if (existing) {
@@ -70,7 +84,7 @@ export default function AddRouteScreen() {
     }
 
     router.back();
-  }, [canSave, name, color, waypoints, notes, addRoute, updateRoute, existing]);
+  }, [canSave, name, color, waypoints, notes, pace, addRoute, updateRoute, existing]);
 
   return (
     <>
@@ -187,6 +201,23 @@ export default function AddRouteScreen() {
           textAlignVertical="top"
           testID="route-notes-input"
         />
+
+        <Text style={styles.label}>PACE MOVEMENT PLAN (OPTIONAL)</Text>
+        {PACE_FIELDS.map((f) => (
+          <View key={f.key} style={styles.paceBlock}>
+            <Text style={styles.paceLabel}>{f.label}</Text>
+            <Text style={styles.paceHint}>{f.hint}</Text>
+            <TextInput
+              style={[styles.input, styles.paceInput]}
+              value={pace[f.key] ?? ''}
+              onChangeText={(text) => setPace((prev) => ({ ...prev, [f.key]: text }))}
+              placeholder="Route, rally point, or notes..."
+              placeholderTextColor={Colors.textMuted}
+              multiline
+              textAlignVertical="top"
+            />
+          </View>
+        ))}
 
         <TouchableOpacity
           style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
@@ -342,6 +373,24 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     fontSize: 13,
     fontWeight: '600' as const,
+  },
+  paceBlock: {
+    marginBottom: 12,
+  },
+  paceLabel: {
+    color: Colors.orangeLight,
+    fontSize: 11,
+    fontWeight: '800' as const,
+    letterSpacing: 1,
+  },
+  paceHint: {
+    color: Colors.textMuted,
+    fontSize: 10,
+    marginTop: 2,
+    marginBottom: 6,
+  },
+  paceInput: {
+    minHeight: 60,
   },
   saveButton: {
     flexDirection: 'row',

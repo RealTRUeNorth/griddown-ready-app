@@ -23,6 +23,7 @@ import { MapBounds } from '@/lib/tileMath';
 import { TCard, SectionTitle, Chip, ProgressBar } from '@/components/tactical';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/pages/Prep';
 import { cn } from '@/lib/utils';
@@ -98,7 +99,7 @@ class CachedTileLayer extends L.TileLayer {
 }
 
 export default function MapPage() {
-  const { pois, routes, addPoi, removePoi, removeRoute, members } = useAppData();
+  const { pois, routes, addPoi, removePoi, removeRoute, updateRoute, members } = useAppData();
   const mapRef = useRef<L.Map | null>(null);
   const mapDivRef = useRef<HTMLDivElement>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
@@ -111,6 +112,7 @@ export default function MapPage() {
   const [packName, setPackName] = useState('My Area');
   const [prepProgress, setPrepProgress] = useState<{ downloaded: number; total: number; running: boolean }>({ downloaded: 0, total: 0, running: false });
   const [poiDialog, setPoiDialog] = useState(false);
+  const [paceRoute, setPaceRoute] = useState<Route | null>(null);
   const [filter, setFilter] = useState<'all' | 'tactical' | 'infrastructure'>('all');
 
   const center: [number, number] = useMemo(() => {
@@ -365,11 +367,35 @@ export default function MapPage() {
           );
         })}
         {routes.map((route) => (
-          <TCard key={route.id} className="p-3 flex items-center gap-2.5">
-            <Navigation className="w-4 h-4 shrink-0" style={{ color: route.color }} />
+          <TCard key={route.id} className="p-3 flex items-start gap-2.5">
+            <Navigation className="w-4 h-4 shrink-0 mt-0.5" style={{ color: route.color }} />
             <div className="flex-1 min-w-0">
               <div className="text-[13px] font-semibold text-[#E8E4DC] truncate">{route.name}</div>
               <div className="text-[10px] text-[#6A6860] truncate">{route.waypoints.length} waypoints · {route.notes ?? ''}</div>
+              {route.pace && [route.pace.primary, route.pace.alternate, route.pace.contingency, route.pace.emergency].some((p) => p?.trim()) && (
+                <div className="mt-2 bg-[#1E221E] border border-[#3A3F3A] rounded-lg p-2 space-y-0.5">
+                  <div className="text-[8px] gd-label text-[#E8A04A]">PACE PLAN</div>
+                  {([
+                    ['P — Primary', route.pace.primary],
+                    ['A — Alternate', route.pace.alternate],
+                    ['C — Contingency', route.pace.contingency],
+                    ['E — Emergency', route.pace.emergency],
+                  ] as [string, string | undefined][])
+                    .filter(([, v]) => v && v.trim())
+                    .map(([label, v]) => (
+                      <div key={label} className="text-[10px] text-[#9A9890] leading-snug">
+                        <span className="gd-label text-[#E8A04A] mr-1.5">{label}</span>
+                        {v}
+                      </div>
+                    ))}
+                </div>
+              )}
+              <button
+                onClick={() => setPaceRoute(route)}
+                className="mt-2 text-[9px] gd-label font-bold text-[#E8A04A] hover:text-[#FFC107] transition-colors"
+              >
+                {route.pace?.primary?.trim() ? 'EDIT PACE' : '+ SET PACE PLAN'}
+              </button>
             </div>
             <button
               onClick={() => removeRoute(route.id)}
@@ -381,6 +407,9 @@ export default function MapPage() {
           </TCard>
         ))}
       </div>
+
+      {/* PACE plan dialog */}
+      <PaceDialog route={paceRoute} onClose={() => setPaceRoute(null)} onSave={updateRoute} />
 
       {/* Pack name dialog */}
       <Dialog open={packDialog} onOpenChange={setPackDialog}>
@@ -404,6 +433,65 @@ export default function MapPage() {
       {/* Add POI dialog */}
       <AddPoiDialog open={poiDialog} onClose={() => setPoiDialog(false)} onSave={addPoi} mapCenter={center} />
     </div>
+  );
+}
+
+function PaceDialog({ route, onClose, onSave }: {
+  route: Route | null;
+  onClose: () => void;
+  onSave: (r: Route) => void;
+}) {
+  const [primary, setPrimary] = useState('');
+  const [alternate, setAlternate] = useState('');
+  const [contingency, setContingency] = useState('');
+  const [emergency, setEmergency] = useState('');
+
+  React.useEffect(() => {
+    if (route) {
+      setPrimary(route.pace?.primary ?? '');
+      setAlternate(route.pace?.alternate ?? '');
+      setContingency(route.pace?.contingency ?? '');
+      setEmergency(route.pace?.emergency ?? '');
+    }
+  }, [route]);
+
+  if (!route) return null;
+
+  const pace = { primary: primary.trim(), alternate: alternate.trim(), contingency: contingency.trim(), emergency: emergency.trim() };
+  const hasContent = Object.values(pace).some((v) => v);
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="bg-[#242824] border-[#3A3F3A] text-[#E8E4DC]">
+        <DialogHeader>
+          <DialogTitle className="gd-label text-sm">PACE PLAN — {route.name.toUpperCase()}</DialogTitle>
+        </DialogHeader>
+        <p className="text-[12px] text-[#9A9890]">
+          Primary, Alternate, Contingency, Emergency — how the group moves if each layer fails.
+        </p>
+        <Field label="PRIMARY">
+          <Textarea value={primary} onChange={(e) => setPrimary(e.target.value)} placeholder="The planned route" className="bg-[#1E221E] border-[#3A3F3A] min-h-[56px] text-[13px]" />
+        </Field>
+        <Field label="ALTERNATE">
+          <Textarea value={alternate} onChange={(e) => setAlternate(e.target.value)} placeholder="If primary is blocked" className="bg-[#1E221E] border-[#3A3F3A] min-h-[56px] text-[13px]" />
+        </Field>
+        <Field label="CONTINGENCY">
+          <Textarea value={contingency} onChange={(e) => setContingency(e.target.value)} placeholder="If alternate fails" className="bg-[#1E221E] border-[#3A3F3A] min-h-[56px] text-[13px]" />
+        </Field>
+        <Field label="EMERGENCY">
+          <Textarea value={emergency} onChange={(e) => setEmergency(e.target.value)} placeholder="Last-resort movement" className="bg-[#1E221E] border-[#3A3F3A] min-h-[56px] text-[13px]" />
+        </Field>
+        <Button
+          onClick={() => {
+            onSave({ ...route, pace: hasContent ? pace : undefined });
+            onClose();
+          }}
+          className="w-full bg-[#D4822A] hover:bg-[#E8A04A] text-[#1A1D1A] font-bold gd-label text-xs"
+        >
+          SAVE PACE PLAN
+        </Button>
+      </DialogContent>
+    </Dialog>
   );
 }
 

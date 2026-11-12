@@ -193,6 +193,14 @@ struct ContentView: View {
             HelpFaqView()
         case .legal:
             LegalView()
+        case .areaStudy:
+            AreaStudyView()
+        case .threats:
+            ThreatsView()
+        case .equipment:
+            EquipmentView()
+        case .reportBuilder:
+            ReportBuilderView()
         }
     }
 }
@@ -212,4 +220,8 @@ enum NavRoute: Hashable {
     case lantern
     case helpFaq
     case legal
+    case areaStudy
+    case threats
+    case equipment
+    case reportBuilder
 }

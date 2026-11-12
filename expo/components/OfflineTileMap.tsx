@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, useCallback } from 'react';
+import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -88,6 +88,8 @@ interface OfflineTileMapProps {
   pois: POI[];
   userLocation: Coordinates | null;
   onPoiPress: (poi: POI) => void;
+  /** When the nonce changes, re-center the map on `coordinates`. */
+  centerTarget?: { coordinates: Coordinates; nonce: number } | null;
 }
 
 /**
@@ -95,7 +97,7 @@ interface OfflineTileMapProps {
  * storage in a pan/zoom image grid, with POI markers and the user location.
  * No network is used at render time — everything comes from the pack.
  */
-export default function OfflineTileMap({ pack, pois, userLocation, onPoiPress }: OfflineTileMapProps) {
+export default function OfflineTileMap({ pack, pois, userLocation, onPoiPress, centerTarget }: OfflineTileMapProps) {
   const [center, setCenter] = useState<Coordinates>({
     latitude: pack.center.latitude,
     longitude: pack.center.longitude,
@@ -187,6 +189,15 @@ export default function OfflineTileMap({ pack, pois, userLocation, onPoiPress }:
     }
     return { tiles: out, cx, cy };
   }, [size, center, zoom, dirUri]);
+
+  // Re-center on a target (e.g. the user's location) when its nonce changes
+  const centerNonce = centerTarget?.nonce;
+  const centerCoords = centerTarget?.coordinates;
+  useEffect(() => {
+    if (centerNonce == null || !centerCoords) return;
+    setCenter(clampCenter(centerCoords.latitude, centerCoords.longitude));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [centerNonce]);
 
   const toScreen = useCallback(
     (lat: number, lng: number): { left: number; top: number } | null => {

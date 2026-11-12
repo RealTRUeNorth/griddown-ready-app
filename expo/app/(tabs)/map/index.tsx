@@ -91,6 +91,11 @@ export default function MapScreen() {
   const [drawerExpanded, setDrawerExpanded] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const mapRef = useRef<any>(null);
+  const hasCenteredOnUser = useRef<boolean>(false);
+  const [offlineCenterTarget, setOfflineCenterTarget] = useState<{
+    coordinates: Coordinates;
+    nonce: number;
+  } | null>(null);
   const drawerAnim = useRef(new Animated.Value(0)).current;
   const mapPacks = useMapPacks();
 
@@ -282,6 +287,25 @@ export default function MapScreen() {
     })();
   }, [acquireLocation]);
 
+  // initialRegion is frozen at first render — before the async GPS fix
+  // resolves — so once the first fix lands, fly the map to the user
+  // (unless they've already panned somewhere on their own).
+  useEffect(() => {
+    if (!userLocation || hasCenteredOnUser.current) return;
+    hasCenteredOnUser.current = true;
+    if (offlineMode && activePack) {
+      setOfflineCenterTarget({ coordinates: userLocation, nonce: Date.now() });
+      return;
+    }
+    if (mapRef.current && Platform.OS !== 'web') {
+      mapRef.current.animateToRegion({
+        ...userLocation,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      }, 600);
+    }
+  }, [userLocation, offlineMode, activePack]);
+
   const toggleDrawer = useCallback(() => {
     const toValue = drawerExpanded ? 0 : 1;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -371,6 +395,10 @@ export default function MapScreen() {
       }
       setUserLocation(loc);
     }
+    if (offlineMode && activePack) {
+      setOfflineCenterTarget({ coordinates: loc, nonce: Date.now() });
+      return;
+    }
     if (mapRef.current && Platform.OS !== 'web') {
       mapRef.current.animateToRegion({
         ...loc,
@@ -378,7 +406,7 @@ export default function MapScreen() {
         longitudeDelta: 0.01,
       }, 500);
     }
-  }, [userLocation, acquireLocation]);
+  }, [userLocation, acquireLocation, offlineMode, activePack]);
 
   const handleMapLongPress = useCallback((e: any) => {
     if (Platform.OS === 'web') return;
@@ -611,6 +639,7 @@ export default function MapScreen() {
           pois={offlinePois}
           userLocation={userLocation}
           onPoiPress={(p) => setSelectedPoi(p)}
+          centerTarget={offlineCenterTarget}
         />
       ) : MapView ? (
         <MapView
@@ -630,6 +659,10 @@ export default function MapScreen() {
           showsCompass
           onLongPress={handleMapLongPress}
           onRegionChangeComplete={(region: MapRegion) => setCurrentRegion(region)}
+          onPanDrag={() => {
+            // The user moved the map manually — stop auto-centering on GPS
+            hasCenteredOnUser.current = true;
+          }}
           mapType="standard"
         >
           {showMembers &&
